@@ -1,0 +1,2778 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BusinessCard PRO — Цифровая визитка для бизнеса в Казахстане</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter, Montserrat, Playfair Display, Manrope -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- QRCode.js библиотека для генерации реальных сканируемых QR-кодов -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #0ea5e9;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --font-family: 'Inter', sans-serif;
+      --card-radius: 1.25rem;
+      --btn-radius: 0.85rem;
+      --bg-image: none;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    .public-bg-layer {
+      background-color: var(--bg-page);
+      background-image: var(--bg-image);
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    /* Динамические стили карточек и кнопок, управляемые из Конструктора дизайна */
+    .themed-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    .themed-card.card-glass {
+      background-color: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .dark-mode .themed-card.card-glass {
+      background-color: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .themed-card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 36px -12px rgba(0, 0, 0, 0.14);
+    }
+
+    .themed-btn {
+      border-radius: var(--btn-radius);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .themed-btn:hover {
+      transform: translateY(-2px);
+    }
+    .themed-btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary-custom {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #ffffff;
+    }
+    .btn-glow {
+      box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--primary) 55%, transparent);
+    }
+    .btn-glow:hover {
+      box-shadow: 0 12px 28px -2px color-mix(in srgb, var(--primary) 75%, transparent);
+    }
+
+    /* Анимация пульсации для блока 2ГИС */
+    @keyframes pulseRing2Gis {
+      0% { transform: scale(0.95); opacity: 0.75; }
+      70% { transform: scale(1.12); opacity: 0; }
+      100% { transform: scale(1.12); opacity: 0; }
+    }
+    .pulse-2gis::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 2px solid #19b533;
+      animation: pulseRing2Gis 2s infinite;
+      pointer-events: none;
+    }
+
+    /* Плавное появление секций */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up {
+      animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Скрытие скроллбара для горизонтальных вкладок на мобильных */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Специальные стили для печати тейбл-тента с QR-кодом */
+    @media print {
+      body * { visibility: hidden !important; }
+      #qr-print-sheet, #qr-print-sheet * { visibility: visible !important; }
+      #qr-print-sheet {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #ffffff !important;
+        z-index: 99999 !important;
+      }
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- Корневой контейнер приложения -->
+  <div id="app" class="min-h-screen flex flex-col"></div>
+
+  <!-- Скрытый макет для печати QR-тейбл-тента -->
+  <div id="qr-print-sheet" class="hidden"></div>
+
+  <!-- Контейнер всплывающих уведомлений (Toast) -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Контейнер модальных окон (Услуги, Галерея Lightbox, Подтверждения) -->
+  <div id="modal-root"></div>
+
+  <script>
+    /**
+     * ============================================================================
+     * МОДУЛЬ 1: СЛОВАРЬ МУЛЬТИЯЗЫЧНОСТИ (RU / KZ / EN)
+     * ============================================================================
+     */
+    const I18N = {
+      ru: {
+        brandBadge: 'Цифровая визитка',
+        ownerLoginBtn: 'Кабинет владельца',
+        demoTag: 'ДЕМО-ПРОФИЛЬ',
+        openStatus: 'Открыто • Ждём вас',
+        addressLabel: 'Адрес',
+        copyAddress: 'Скопировать',
+        copied: 'Скопировано!',
+        phoneLabel: 'Телефон',
+        hoursLabel: 'График работы',
+        btn2gisReview: 'Оставить отзыв в 2ГИС',
+        btnInstagram: 'Мы в Instagram',
+        btnCall: 'Позвонить',
+        btnWhatsapp: 'Написать в WhatsApp',
+        btnRoute: 'Построить маршрут',
+        btnServices: 'Наши услуги',
+        btnPromos: 'Наши акции',
+        reviewBlockTitle: 'Вам понравилось наше обслуживание? Поделитесь впечатлениями!',
+        reviewBlockDesc: 'Честные отзывы в 2ГИС помогают малым компаниям Казахстана становиться лучше и помогают другим гостям сделать правильный выбор. Переход ведёт напрямую на официальную карточку организации в 2ГИС.',
+        reviewBlockBtn: 'Оценить нас в 2ГИС',
+        promosTitle: 'Наши акции и спецпредложения',
+        promosSubtitle: 'Актуальные бонусы для гостей по QR-карте',
+        promoValidUntil: 'Действует до:',
+        promoClaimBtn: 'Узнать об акции',
+        servicesTitle: 'Каталог услуг и прайс-лист',
+        servicesSubtitle: 'Прозрачные цены в тенге (₸) и подробное описание',
+        serviceDetailsBtn: 'Узнать подробнее',
+        serviceBookBtn: 'Записаться / Уточнить',
+        serviceWhatsappBtn: 'Написать в WhatsApp',
+        galleryTitle: 'Фотогалерея',
+        gallerySubtitle: 'Атмосфера, команда и примеры наших работ',
+        contactTitle: 'Оставить заявку или задать вопрос',
+        contactSubtitle: 'Оставьте контакты — мы свяжемся с вами в ближайшее время',
+        formName: 'Ваше имя',
+        formNamePlaceholder: 'Например: Айгерим',
+        formPhone: 'Номер телефона',
+        formPhonePlaceholder: '+7 (700) 000-00-00',
+        formMsg: 'Сообщение или интересующая услуга',
+        formMsgPlaceholder: 'Здравствуйте! Хочу уточнить детали...',
+        formSubmit: 'Отправить заявку',
+        formDemoNote: 'Демо-режим: заявка сохраняется локально в панели владельца без отправки на внешний сервер.',
+        formSuccess: 'Заявка принята! В демо-режиме она сохранена во вкладке «Главная» кабинета владельца.',
+        formError: 'Пожалуйста, корректно заполните имя и номер телефона.',
+        footerPowered: 'Создано на платформе',
+        footerDemoDisclaimer: 'Демонстрационная версия для презентации малого бизнеса в Казахстане.',
+        // Авторизация
+        loginTitle: 'Вход в кабинет владельца',
+        loginSubtitle: 'Управляйте контактами, услугами, акциями и дизайном вашей цифровой визитки',
+        loginUserLabel: 'Логин',
+        loginPassLabel: 'Пароль',
+        loginBtn: 'Войти в панель',
+        loginFillDemo: 'Заполнить демо (admin / admin123)',
+        loginBackSite: '← Вернуться на страницу бизнеса',
+        loginError: 'Неверный логин или пароль. Используйте admin / admin123',
+        securityNoticeTitle: 'Примечание о безопасности (Демо-архитектура):',
+        securityNoticeText: 'Текущая версия работает на клиентском LocalStorage для мгновенной демонстрации предпринимателям. Для коммерческого продакшена предусмотрена серверная авторизация (JWT/HTTP-only cookies), хеширование паролей (bcrypt/Argon2) и облачная БД.',
+        // Админ-панель
+        adminPanelTitle: 'Панель управления',
+        viewPublicSite: 'Открыть страницу',
+        previewBannerText: 'Режим живого предпросмотра дизайна (не забудьте сохранить изменения)',
+        navDashboard: 'Главная',
+        navCompany: 'Информация о компании',
+        navDesign: 'Дизайн сайта',
+        navSocials: 'Социальные сети',
+        nav2gis: 'Ссылка 2ГИС',
+        navServices: 'Услуги',
+        navPromos: 'Акции',
+        navGallery: 'Галерея',
+        navQr: 'QR-код',
+        navStats: 'Статистика',
+        navAccount: 'Настройки аккаунта',
+        navLogout: 'Выход',
+        saveChanges: 'Сохранить изменения',
+        savedToast: 'Изменения успешно сохранены!'
+      },
+      kz: {
+        brandBadge: 'Цифрлық визитка',
+        ownerLoginBtn: 'Иесінің кабинеті',
+        demoTag: 'ДЕМО-ПРОФИЛЬ',
+        openStatus: 'Ашық • Сізді күтеміз',
+        addressLabel: 'Мекенжай',
+        copyAddress: 'Көшіру',
+        copied: 'Көшірілді!',
+        phoneLabel: 'Телефон',
+        hoursLabel: 'Жұмыс уақыты',
+        btn2gisReview: '2ГИС-те пікір қалдыру',
+        btnInstagram: 'Біз Instagram-да',
+        btnCall: 'Қоңырау шалу',
+        btnWhatsapp: 'WhatsApp-қа жазу',
+        btnRoute: 'Бағыт құру',
+        btnServices: 'Біздің қызметтер',
+        btnPromos: 'Біздің акциялар',
+        reviewBlockTitle: 'Қызмет көрсету ұнады ма? Әсеріңізбен бөлісіңіз!',
+        reviewBlockDesc: '2ГИС-тегі шынайы пікірлер Қазақстандағы шағын бизнеске жақсаруға және басқа қонақтарға дұрыс таңдау жасауға көмектеседі. Батырма 2ГИС-тегі ресми парақшаға тікелей апарады.',
+        reviewBlockBtn: '2ГИС-те бағалау',
+        promosTitle: 'Акциялар мен арнайы ұсыныстар',
+        promosSubtitle: 'QR-карта арқылы қонақтарға арналған тиімді ұсыныстар',
+        promoValidUntil: 'Жарамдылық мерзімі:',
+        promoClaimBtn: 'Акция туралы білу',
+        servicesTitle: 'Қызметтер каталогы және бағалар',
+        servicesSubtitle: 'Теңгемен (₸) ашық бағалар және толық сипаттама',
+        serviceDetailsBtn: 'Толығырақ білу',
+        serviceBookBtn: 'Жазылу / Нақтылау',
+        serviceWhatsappBtn: 'WhatsApp-қа жазу',
+        galleryTitle: 'Фотогалерея',
+        gallerySubtitle: 'Атмосфера, команда және жұмыстарымыздың үлгілері',
+        contactTitle: 'Өтінім қалдыру немесе сұрақ қою',
+        contactSubtitle: 'Байланыс деректеріңізді қалдырыңыз — жақын арада хабарласамыз',
+        formName: 'Сіздің атыңыз',
+        formNamePlaceholder: 'Мысалы: Әйгерім',
+        formPhone: 'Телефон нөмірі',
+        formPhonePlaceholder: '+7 (700) 000-00-00',
+        formMsg: 'Хабарлама немесе қызықтыратын қызмет',
+        formMsgPlaceholder: 'Сәлеметсіз бе! Толығырақ білгім келеді...',
+        formSubmit: 'Өтінім жіберу',
+        formDemoNote: 'Демо-режим: өтінім сыртқы серверге жіберілмей, иесінің панелінде жергілікті сақталады.',
+        formSuccess: 'Өтінім қабылданды! Демо-режимде ол иесінің кабинетіндегі «Басты бет» бөлімінде сақталды.',
+        formError: 'Атыңызды және телефон нөміріңізді дұрыс толтырыңыз.',
+        footerPowered: 'Платформада жасалған:',
+        footerDemoDisclaimer: 'Қазақстандағы шағын бизнеске арналған демонстрациялық нұсқа.',
+        loginTitle: 'Иесінің кабинетіне кіру',
+        loginSubtitle: 'Цифрлық визиткаңыздың байланыстарын, қызметтерін, акцияларын және дизайнын басқарыңыз',
+        loginUserLabel: 'Логин',
+        loginPassLabel: 'Құпия сөз',
+        loginBtn: 'Панельге кіру',
+        loginFillDemo: 'Демо деректерді толтыру (admin / admin123)',
+        loginBackSite: '← Бизнес парақшасына оралу',
+        loginError: 'Логин немесе құпия сөз қате. admin / admin123 қолданыңыз',
+        securityNoticeTitle: 'Қауіпсіздік туралы ескерту (Демо-архитектура):',
+        securityNoticeText: 'Ағымдағы нұсқа жылдам көрсету үшін LocalStorage негізінде жұмыс істейді. Коммерциялық іске қосу үшін серверлік авторизация (JWT) және дерекқор қарастырылған.',
+        adminPanelTitle: 'Басқару панелі',
+        viewPublicSite: 'Парақшаны ашу',
+        previewBannerText: 'Дизайнды алдын ала қарау режимі (өзгерістерді сақтауды ұмытпаңыз)',
+        navDashboard: 'Басты бет',
+        navCompany: 'Компания туралы',
+        navDesign: 'Сайт дизайны',
+        navSocials: 'Әлеуметтік желілер',
+        nav2gis: '2ГИС сілтемесі',
+        navServices: 'Қызметтер',
+        navPromos: 'Акциялар',
+        navGallery: 'Галерея',
+        navQr: 'QR-код',
+        navStats: 'Статистика',
+        navAccount: 'Аккаунт баптаулары',
+        navLogout: 'Шығу',
+        saveChanges: 'Өзгерістерді сақтау',
+        savedToast: 'Өзгерістер сәтті сақталды!'
+      },
+      en: {
+        brandBadge: 'Digital Business Card',
+        ownerLoginBtn: 'Owner Portal',
+        demoTag: 'DEMO PROFILE',
+        openStatus: 'Open Now • Welcome',
+        addressLabel: 'Address',
+        copyAddress: 'Copy',
+        copied: 'Copied!',
+        phoneLabel: 'Phone',
+        hoursLabel: 'Working Hours',
+        btn2gisReview: 'Leave a 2GIS Review',
+        btnInstagram: 'Follow on Instagram',
+        btnCall: 'Call Now',
+        btnWhatsapp: 'Message on WhatsApp',
+        btnRoute: 'Get Directions',
+        btnServices: 'Our Services',
+        btnPromos: 'Special Offers',
+        reviewBlockTitle: 'Enjoyed our service? Share your experience!',
+        reviewBlockDesc: 'Honest reviews on 2GIS help local businesses in Kazakhstan grow and guide new guests. Clicking below takes you directly to our official 2GIS page.',
+        reviewBlockBtn: 'Rate us on 2GIS',
+        promosTitle: 'Promotions & Special Offers',
+        promosSubtitle: 'Exclusive bonuses for QR & NFC card visitors',
+        promoValidUntil: 'Valid until:',
+        promoClaimBtn: 'Claim Offer',
+        servicesTitle: 'Services & Price List',
+        servicesSubtitle: 'Transparent pricing in Tenge (₸) and detailed info',
+        serviceDetailsBtn: 'Learn More',
+        serviceBookBtn: 'Book / Inquire',
+        serviceWhatsappBtn: 'Ask on WhatsApp',
+        galleryTitle: 'Photo Gallery',
+        gallerySubtitle: 'Atmosphere, team, and highlights of our work',
+        contactTitle: 'Send a Request or Question',
+        contactSubtitle: 'Leave your details and we will reach out shortly',
+        formName: 'Your Name',
+        formNamePlaceholder: 'e.g., Aigerim',
+        formPhone: 'Phone Number',
+        formPhonePlaceholder: '+7 (700) 000-00-00',
+        formMsg: 'Message or Service of Interest',
+        formMsgPlaceholder: 'Hello! I would like to know more about...',
+        formSubmit: 'Send Request',
+        formDemoNote: 'Demo mode: inquiries are stored locally in the Owner Dashboard without external server transmission.',
+        formSuccess: 'Request received! Saved locally in the Owner Dashboard under "Overview".',
+        formError: 'Please enter a valid name and phone number.',
+        footerPowered: 'Powered by',
+        footerDemoDisclaimer: 'Commercial demo platform built for small businesses in Kazakhstan.',
+        loginTitle: 'Owner Portal Login',
+        loginSubtitle: 'Manage your contacts, services, promos, and digital card appearance',
+        loginUserLabel: 'Username',
+        loginPassLabel: 'Password',
+        loginBtn: 'Sign In',
+        loginFillDemo: 'Autofill Demo (admin / admin123)',
+        loginBackSite: '← Back to Business Page',
+        loginError: 'Invalid credentials. Use admin / admin123',
+        securityNoticeTitle: 'Security Architecture Note (Demo Mode):',
+        securityNoticeText: 'This demo uses client-side LocalStorage for instant presentation. Production deployment supports backend authentication (JWT/Session), password hashing, and cloud database storage.',
+        adminPanelTitle: 'Admin Dashboard',
+        viewPublicSite: 'View Live Page',
+        previewBannerText: 'Live Design Preview Mode (Remember to save your changes)',
+        navDashboard: 'Overview',
+        navCompany: 'Company Info',
+        navDesign: 'Site Design',
+        navSocials: 'Social Links',
+        nav2gis: '2GIS Link',
+        navServices: 'Services',
+        navPromos: 'Promotions',
+        navGallery: 'Gallery',
+        navQr: 'QR Code',
+        navStats: 'Analytics',
+        navAccount: 'Account Settings',
+        navLogout: 'Log Out',
+        saveChanges: 'Save Changes',
+        savedToast: 'Changes saved successfully!'
+      }
+    };
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 2: ПРЕСЕТЫ ДИЗАЙНА И ДЕМО-ШАБЛОНЫ БИЗНЕСА
+     * ============================================================================
+     */
+    const DESIGN_PRESETS = [
+      {
+        id: 'business-blue',
+        name: 'Business Blue',
+        desc: 'Синий и белый',
+        primary: '#2563eb',
+        secondary: '#0284c7',
+        bgPage: '#f8fafc',
+        darkMode: false
+      },
+      {
+        id: 'luxury-black',
+        name: 'Luxury Black',
+        desc: 'Чёрный и золотой',
+        primary: '#d97706',
+        secondary: '#f59e0b',
+        bgPage: '#09090b',
+        darkMode: true
+      },
+      {
+        id: 'fresh-green',
+        name: 'Fresh Green',
+        desc: 'Зелёный и белый',
+        primary: '#059669',
+        secondary: '#10b981',
+        bgPage: '#f0fdf4',
+        darkMode: false
+      },
+      {
+        id: 'modern-purple',
+        name: 'Modern Purple',
+        desc: 'Фиолетовый и розовый',
+        primary: '#7c3aed',
+        secondary: '#ec4899',
+        bgPage: '#faf5ff',
+        darkMode: false
+      },
+      {
+        id: 'minimal-white',
+        name: 'Minimal White',
+        desc: 'Белый и графитовый',
+        primary: '#18181b',
+        secondary: '#52525b',
+        bgPage: '#ffffff',
+        darkMode: false
+      },
+      {
+        id: 'creative-orange',
+        name: 'Creative Orange',
+        desc: 'Оранжевый и тёмный',
+        primary: '#ea580c',
+        secondary: '#f97316',
+        bgPage: '#111827',
+        darkMode: true
+      }
+    ];
+
+    const DEFAULT_STATE = {
+      company: {
+        name: 'Aura Coffee & Lounge [ДЕМО]',
+        category: 'Спешелти кофейня • Десерты • Коворкинг',
+        description: 'Уютное городское пространство в центре Астаны. Свежеобжаренный кофе, авторские десерты, быстрый Wi-Fi и гостеприимный сервис каждый день. Демонстрационный профиль BusinessCard PRO.',
+        address: 'г. Астана, пр. Мангилик Ел, 55/1 (ДЕМО-адрес)',
+        phone: '+7 (700) 000-00-00',
+        hours: 'Ежедневно: 08:00 – 23:00',
+        logo: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=300&q=80',
+        cover: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1400&q=80'
+      },
+      socials: {
+        instagram: 'https://instagram.com/',
+        whatsapp: 'https://wa.me/77000000000',
+        whatsappPhone: '77000000000',
+        routeUrl: 'https://2gis.kz/astana',
+        telegram: 'https://t.me/',
+        dgisUrl: 'https://2gis.kz/astana'
+      },
+      design: {
+        preset: 'business-blue',
+        primaryColor: '#2563eb',
+        secondaryColor: '#0284c7',
+        bgColor: '#f8fafc',
+        darkMode: false,
+        btnStyle: 'rounded', // rounded | pill | sharp | glow
+        cardStyle: 'soft',   // soft | large | sharp | glass
+        fontFamily: 'Inter',
+        bgImage: ''
+      },
+      services: [
+        {
+          id: 'srv-1',
+          title: 'Фирменный сет «Утро в Астане»',
+          description: 'Любой авторский раф или капучино 350 мл + свежий миндальный круассан собственного производства.',
+          price: 2490,
+          image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'srv-2',
+          title: 'Дегустационный сет спешелти кофе',
+          description: 'Три способа заваривания (V60, Кемекс, Эспрессо) от нашего шеф-бариста с рассказом о зерне.',
+          price: 4500,
+          image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'srv-3',
+          title: 'Бизнес-ланч «Евразия»',
+          description: 'Крем-суп дня, горячее блюдо на выбор, салат и фирменный ягодный морс. Подаётся с 12:00 до 16:00.',
+          price: 3890,
+          image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'srv-4',
+          title: 'Аренда VIP-зоны для встреч (1 час)',
+          description: 'Приватная переговорная комната до 8 персон, большой экран, высокоскоростной интернет и комплимент от заведения.',
+          price: 7000,
+          image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
+        }
+      ],
+      promos: [
+        {
+          id: 'prm-1',
+          title: 'Скидка 20% за отзыв в 2ГИС',
+          description: 'Покажите опубликованный отзыв на кассе и получите скидку 20% на весь чек при текущем или следующем визите!',
+          validUntil: '31.12.2026',
+          image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80'
+        },
+        {
+          id: 'prm-2',
+          title: 'Каждый 6-й кофе в подарок',
+          description: 'Сканируйте нашу NFC-карту на баре при каждом заказе и забирайте шестой напиток абсолютно бесплатно.',
+          validUntil: 'Бессрочно',
+          image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80'
+        }
+      ],
+      gallery: [
+        {
+          id: 'gal-1',
+          url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80',
+          caption: 'Основной зал и панорамные окна'
+        },
+        {
+          id: 'gal-2',
+          url: 'https://images.unsplash.com/photo-1507133750040-4a8f57021571?auto=format&fit=crop&w=900&q=80',
+          caption: 'Авторская подача латте-арт'
+        },
+        {
+          id: 'gal-3',
+          url: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=900&q=80',
+          caption: 'Уютная вечерняя атмосфера'
+        },
+        {
+          id: 'gal-4',
+          url: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=900&q=80',
+          caption: 'Свежие десерты каждое утро'
+        }
+      ],
+      qrSettings: {
+        caption: 'Отсканируйте, чтобы открыть меню, акции и оставить отзыв в 2ГИС',
+        subCaption: 'Наведите камеру смартфона или приложите NFC-карту'
+      },
+      stats: {
+        pageViews: 148,
+        instagramClicks: 42,
+        dgisClicks: 67,
+        whatsappClicks: 39,
+        callClicks: 24,
+        routeClicks: 31
+      },
+      leads: [
+        {
+          id: 'lead-demo-1',
+          name: 'Данияр (Демо-заявка)',
+          phone: '+7 (700) 000-00-00',
+          message: 'Здравствуйте! Хочу забронировать столик у окна на завтра в 19:00.',
+          createdAt: '24.11.2026, 10:15'
+        }
+      ]
+    };
+
+    // Дополнительные шаблоны для быстрого переключения в демо-режиме
+    const BUSINESS_TEMPLATES = {
+      coffee: DEFAULT_STATE,
+      beauty: {
+        ...DEFAULT_STATE,
+        company: {
+          name: 'QazaqGlow Beauty & Spa [ДЕМО]',
+          category: 'Студия эстетики • Косметология • СПА',
+          description: 'Премиальный уход, аппаратная косметология и расслабляющие СПА-ритуалы в Астане. Индивидуальный подход и сертифицированные мастера. Демо-шаблон.',
+          address: 'г. Астана, ул. Достык, 18 (ДЕМО-адрес)',
+          phone: '+7 (700) 000-00-00',
+          hours: 'Ежедневно: 10:00 – 21:00',
+          logo: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80',
+          cover: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1400&q=80'
+        },
+        design: {
+          ...DEFAULT_STATE.design,
+          preset: 'modern-purple',
+          primaryColor: '#7c3aed',
+          secondaryColor: '#ec4899',
+          bgColor: '#faf5ff',
+          darkMode: false,
+          fontFamily: 'Playfair Display'
+        },
+        services: [
+          {
+            id: 'b-1',
+            title: 'Комплексный уход «Сияние кожи»',
+            description: 'Ультразвуковая чистка, ферментативный пилинг и увлажняющая маска премиум-класса.',
+            price: 18500,
+            image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80'
+          },
+          {
+            id: 'b-2',
+            title: 'Релакс-массаж аромамаслами (60 мин)',
+            description: 'Глубокое снятие мышечного напряжения с натуральными эфирными маслами.',
+            price: 14000,
+            image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80'
+          }
+        ]
+      },
+      auto: {
+        ...DEFAULT_STATE,
+        company: {
+          name: 'Nomad Detailing Pro [ДЕМО]',
+          category: 'Детейлинг-центр • Керамика • Бронеплёнка',
+          description: 'Профессиональный уход за автомобилем в Астане: полировка кузова, оклейка полиуретановой плёнкой, химчистка салона с гарантией. Демо-шаблон.',
+          address: 'г. Астана, пр. Туран, 44 (ДЕМО-адрес)',
+          phone: '+7 (700) 000-00-00',
+          hours: 'Пн–Вс: 09:00 – 21:00',
+          logo: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=300&q=80',
+          cover: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1400&q=80'
+        },
+        design: {
+          ...DEFAULT_STATE.design,
+          preset: 'luxury-black',
+          primaryColor: '#d97706',
+          secondaryColor: '#f59e0b',
+          bgColor: '#09090b',
+          darkMode: true,
+          fontFamily: 'Montserrat'
+        },
+        services: [
+          {
+            id: 'a-1',
+            title: 'Детейлинг-химчистка салона',
+            description: 'Глубокая очистка кожи, алькантары, потолка и озонирование салона автомобиля.',
+            price: 45000,
+            image: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=800&q=80'
+          },
+          {
+            id: 'a-2',
+            title: 'Керамическое покрытие кузова (2 слоя)',
+            description: 'Зеркальный блеск, гидрофобный эффект и защита лакокрасочного покрытия на 24 месяца.',
+            price: 85000,
+            image: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=800&q=80'
+          }
+        ]
+      }
+    };
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 3: STORAGE & STATE SERVICE (Готов к подключению REST/GraphQL API)
+     * ============================================================================
+     */
+    const STORAGE_KEY = 'businesscard_pro_state_v1';
+    const AUTH_KEY = 'businesscard_pro_demo_session';
+    const LANG_KEY = 'businesscard_pro_lang';
+
+    const StorageService = {
+      loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+          const parsed = JSON.parse(raw);
+          return {
+            ...JSON.parse(JSON.stringify(DEFAULT_STATE)),
+            ...parsed,
+            company: { ...DEFAULT_STATE.company, ...(parsed.company || {}) },
+            socials: { ...DEFAULT_STATE.socials, ...(parsed.socials || {}) },
+            design: { ...DEFAULT_STATE.design, ...(parsed.design || {}) },
+            qrSettings: { ...DEFAULT_STATE.qrSettings, ...(parsed.qrSettings || {}) },
+            stats: { ...DEFAULT_STATE.stats, ...(parsed.stats || {}) }
+          };
+        } catch (e) {
+          console.error('Ошибка чтения LocalStorage:', e);
+          return JSON.parse(JSON.stringify(DEFAULT_STATE));
+        }
+      },
+      saveState(state) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          console.error('Ошибка сохранения в LocalStorage (возможно, слишком большой файл изображения):', e);
+          showToast('Внимание: достигнут лимит памяти браузера для больших фото. Рекомендуется сжать изображение.', 'error');
+        }
+      },
+      resetState() {
+        const fresh = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        this.saveState(fresh);
+        return fresh;
+      },
+      isAuthenticated() {
+        return sessionStorage.getItem(AUTH_KEY) === 'true';
+      },
+      login(username, password) {
+        // Демонстрационная проверка учётных данных (в продакшене заменяется на POST /api/auth/login)
+        if (username.trim() === 'admin' && password === 'admin123') {
+          sessionStorage.setItem(AUTH_KEY, 'true');
+          return true;
+        }
+        return false;
+      },
+      logout() {
+        sessionStorage.removeItem(AUTH_KEY);
+      }
+    };
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 4: ГЛОБАЛЬНОЕ СОСТОЯНИЕ И УТИЛИТЫ
+     * ============================================================================
+     */
+    const AppState = {
+      data: StorageService.loadState(),
+      lang: localStorage.getItem(LANG_KEY) || 'ru',
+      route: 'public', // 'public' | 'login' | 'admin'
+      adminTab: 'dashboard',
+      previewDesign: null, // Временный объект дизайна для предпросмотра
+      mobileMenuOpen: false,
+      lightboxIndex: null
+    };
+
+    // Инкремент просмотра страницы при первой загрузке
+    AppState.data.stats.pageViews += 1;
+    StorageService.saveState(AppState.data);
+
+    function t(key) {
+      return (I18N[AppState.lang] && I18N[AppState.lang][key]) || I18N.ru[key] || key;
+    }
+
+    function formatTenge(amount) {
+      const num = Number(amount) || 0;
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₸';
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      const colors = type === 'error'
+        ? 'bg-red-600 text-white border-red-500'
+        : type === 'info'
+        ? 'bg-slate-900 text-white border-slate-700'
+        : 'bg-emerald-600 text-white border-emerald-500';
+
+      toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-medium animate-fade-up ${colors}`;
+      toast.innerHTML = `
+        <span class="shrink-0">${type === 'error' ? '⚠️' : type === 'info' ? 'ℹ️' : '✅'}</span>
+        <span class="flex-1 leading-snug">${escapeHtml(message)}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 260);
+      }, 3200);
+    }
+
+    // Применение CSS-переменных темы оформления
+    function applyThemeVariables() {
+      const d = AppState.previewDesign || AppState.data.design;
+      const root = document.documentElement;
+      const body = document.body;
+
+      root.style.setProperty('--primary', d.primaryColor || '#2563eb');
+      root.style.setProperty('--secondary', d.secondaryColor || '#0ea5e9');
+      root.style.setProperty('--bg-page', d.bgColor || (d.darkMode ? '#09090b' : '#f8fafc'));
+      root.style.setProperty('--font-family', `'${d.fontFamily || 'Inter'}', sans-serif`);
+
+      if (d.darkMode) {
+        body.classList.add('dark-mode');
+        root.style.setProperty('--bg-card', '#14171f');
+        root.style.setProperty('--text-main', '#f8fafc');
+        root.style.setProperty('--text-muted', '#94a3b8');
+        root.style.setProperty('--border-color', '#262b36');
+      } else {
+        body.classList.remove('dark-mode');
+        root.style.setProperty('--bg-card', '#ffffff');
+        root.style.setProperty('--text-main', '#0f172a');
+        root.style.setProperty('--text-muted', '#475569');
+        root.style.setProperty('--border-color', '#e2e8f0');
+      }
+
+      // Стиль кнопок
+      const btnRadii = {
+        rounded: '0.85rem',
+        pill: '9999px',
+        sharp: '0.25rem',
+        glow: '1rem'
+      };
+      root.style.setProperty('--btn-radius', btnRadii[d.btnStyle] || '0.85rem');
+
+      // Форма карточек
+      const cardRadii = {
+        soft: '1.25rem',
+        large: '2rem',
+        sharp: '0.35rem',
+        glass: '1.5rem'
+      };
+      root.style.setProperty('--card-radius', cardRadii[d.cardStyle] || '1.25rem');
+
+      // Фоновое изображение
+      if (d.bgImage && d.bgImage.trim() !== '') {
+        root.style.setProperty('--bg-image', `linear-gradient(${d.darkMode ? 'rgba(9,9,11,0.82)' : 'rgba(248,250,252,0.84)'}, ${d.darkMode ? 'rgba(9,9,11,0.88)' : 'rgba(248,250,252,0.88)'}), url('${d.bgImage.trim()}')`);
+      } else {
+        root.style.setProperty('--bg-image', 'none');
+      }
+    }
+
+    // Конвертация загруженного файла в DataURL (с оптимизацией размера)
+    function handleImageFileUpload(file, callback) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        showToast('Пожалуйста, выберите файл изображения (JPG, PNG, WebP)', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1200;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          callback(compressed);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 5: SVG-ИКОНКИ (2ГИС, Instagram, WhatsApp, Маршрут, UI)
+     * ============================================================================
+     */
+    const Icons = {
+      dgis: `<svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#19B533"/><path d="M12 6.5C9.51 6.5 7.5 8.51 7.5 11C7.5 14.38 12 18.5 12 18.5C12 18.5 16.5 14.38 16.5 11C16.5 8.51 14.49 6.5 12 6.5ZM12 12.6C11.12 12.6 10.4 11.88 10.4 11C10.4 10.12 11.12 9.4 12 9.4C12.88 9.4 13.6 10.12 13.6 11C13.6 11.88 12.88 12.6 12 12.6Z" fill="white"/></svg>`,
+      instagram: `<svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>`,
+      whatsapp: `<svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-3.825 3.113-6.937 6.937-6.937 1.856.001 3.598.723 4.907 2.034 1.31 1.311 2.031 3.054 2.03 4.908-.001 3.825-3.113 6.938-6.937 6.938z"/></svg>`,
+      phone: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`,
+      route: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>`,
+      services: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>`,
+      promo: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>`,
+      star: `<svg class="w-5 h-5 shrink-0 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`,
+      pin: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+      clock: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+    };
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 6: ТРЕКИНГ КЛИКОВ И НАВИГАЦИЯ
+     * ============================================================================
+     */
+    function trackClick(metric) {
+      if (AppState.data.stats[metric] !== undefined) {
+        AppState.data.stats[metric] += 1;
+        StorageService.saveState(AppState.data);
+      }
+    }
+
+    function setLanguage(lang) {
+      AppState.lang = lang;
+      localStorage.setItem(LANG_KEY, lang);
+      render();
+    }
+
+    function toggleQuickDarkMode() {
+      AppState.data.design.darkMode = !AppState.data.design.darkMode;
+      AppState.data.design.bgColor = AppState.data.design.darkMode ? '#09090b' : '#f8fafc';
+      StorageService.saveState(AppState.data);
+      applyThemeVariables();
+      render();
+    }
+
+    function navigateTo(route) {
+      if (route === 'admin' && !StorageService.isAuthenticated()) {
+        AppState.route = 'login';
+      } else {
+        AppState.route = route;
+      }
+      if (route !== 'admin') {
+        AppState.previewDesign = null;
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      render();
+    }
+
+    function applyDemoBusinessTemplate(key) {
+      if (!BUSINESS_TEMPLATES[key]) return;
+      const currentStats = AppState.data.stats;
+      const currentLeads = AppState.data.leads;
+      AppState.data = JSON.parse(JSON.stringify(BUSINESS_TEMPLATES[key]));
+      AppState.data.stats = currentStats;
+      AppState.data.leads = currentLeads;
+      StorageService.saveState(AppState.data);
+      applyThemeVariables();
+      render();
+      showToast('Шаблон бизнеса успешно применён!');
+    }
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 7: РЕНДЕР ПУБЛИЧНОЙ СТРАНИЦЫ БИЗНЕСА
+     * ============================================================================
+     */
+    function renderLanguageSwitcher() {
+      const langs = [
+        { code: 'ru', label: 'RU' },
+        { code: 'kz', label: 'KZ' },
+        { code: 'en', label: 'EN' }
+      ];
+      const d = AppState.previewDesign || AppState.data.design;
+      return `
+        <div class="inline-flex items-center p-1 rounded-xl border ${d.darkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-200'}">
+          ${langs.map(l => `
+            <button onclick="setLanguage('${l.code}')"
+              class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${AppState.lang === l.code
+                ? 'text-white shadow-sm'
+                : (d.darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900')}"
+              style="${AppState.lang === l.code ? `background: var(--primary)` : ''}">
+              ${l.label}
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderPublicPage() {
+      const { company, socials, services, promos, gallery } = AppState.data;
+      const d = AppState.previewDesign || AppState.data.design;
+      const cardExtraClass = d.cardStyle === 'glass' ? 'card-glass' : '';
+      const btnGlowClass = d.btnStyle === 'glow' ? 'btn-glow' : '';
+      const cleanPhone = (company.phone || '').replace(/[^+\d]/g, '');
+      const waLink = socials.whatsapp && socials.whatsapp.startsWith('http')
+        ? socials.whatsapp
+        : `https://wa.me/${(socials.whatsappPhone || '77000000000').replace(/\D/g, '')}`;
+
+      return `
+        <div class="public-bg-layer min-h-screen flex flex-col">
+          ${AppState.previewDesign ? `
+            <div class="sticky top-0 z-50 bg-amber-500 text-slate-950 px-4 py-2.5 text-xs sm:text-sm font-semibold flex flex-wrap items-center justify-between gap-2 shadow-lg">
+              <span>👁️ ${t('previewBannerText')}</span>
+              <div class="flex items-center gap-2">
+                <button onclick="savePreviewDesign()" class="px-3 py-1 rounded-lg bg-slate-950 text-white hover:bg-slate-800 transition">💾 ${t('saveChanges')}</button>
+                <button onclick="cancelPreviewDesign()" class="px-3 py-1 rounded-lg bg-white/80 text-slate-900 hover:bg-white transition">✕ Закрыть</button>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Фиксированная верхняя панель -->
+          <header class="sticky top-0 z-40 backdrop-blur-md border-b transition-colors ${d.darkMode ? 'bg-slate-950/80 border-slate-800/80' : 'bg-white/80 border-slate-200/80'}">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-sm" style="background: linear-gradient(135deg, var(--primary), var(--secondary))">
+                  B
+                </div>
+                <div class="truncate">
+                  <span class="font-extrabold tracking-tight text-sm sm:text-base">BusinessCard <span style="color: var(--primary)">PRO</span></span>
+                  <span class="hidden md:inline-block ml-2 text-[11px] px-2 py-0.5 rounded-full font-semibold ${d.darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}">${t('brandBadge')}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 sm:gap-3">
+                ${renderLanguageSwitcher()}
+
+                <!-- Быстрый переключатель светлой/тёмной темы -->
+                <button onclick="toggleQuickDarkMode()" title="Сменить тему"
+                  class="p-2 rounded-xl border transition ${d.darkMode ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}">
+                  ${d.darkMode
+                    ? `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>`
+                    : `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>`
+                  }
+                </button>
+
+                <!-- Кнопка входа в кабинет владельца -->
+                <button onclick="navigateTo('admin')"
+                  class="themed-btn px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm flex items-center gap-1.5"
+                  style="background: var(--primary)">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  <span class="hidden sm:inline">${t('ownerLoginBtn')}</span>
+                  <span class="sm:hidden">Admin</span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <!-- Основной контент визитки -->
+          <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-12">
+
+            <!-- Панель быстрого переключения демо-ниш для презентации предпринимателям -->
+            <div class="themed-card ${cardExtraClass} p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2 font-medium" style="color: var(--text-muted)">
+                <span class="px-2 py-0.5 rounded-md font-bold text-[11px] bg-amber-500/15 text-amber-600 dark:text-amber-400">${t('demoTag')}</span>
+                <span>Примеры ниш для демонстрации:</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="applyDemoBusinessTemplate('coffee')" class="px-3 py-1.5 rounded-lg border font-semibold transition hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}">☕ Кофейня</button>
+                <button onclick="applyDemoBusinessTemplate('beauty')" class="px-3 py-1.5 rounded-lg border font-semibold transition hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}">✨ Салон красоты</button>
+                <button onclick="applyDemoBusinessTemplate('auto')" class="px-3 py-1.5 rounded-lg border font-semibold transition hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}">🚘 Детейлинг</button>
+              </div>
+            </div>
+
+            <!-- 1. HERO-СЕКЦИЯ И ПРОФИЛЬ КОМПАНИИ -->
+            <section class="themed-card ${cardExtraClass} overflow-hidden shadow-xl animate-fade-up">
+              <!-- Обложка -->
+              <div class="relative h-48 sm:h-64 md:h-72 w-full bg-slate-800">
+                <img src="${escapeHtml(company.cover)}" alt="${escapeHtml(company.name)}"
+                  onerror="this.src='https://placehold.co/1200x400/1e293b/ffffff?text=BusinessCard+PRO'"
+                  class="w-full h-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></div>
+                <div class="absolute top-4 right-4">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/95 text-white shadow-lg backdrop-blur-sm">
+                    <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                    ${t('openStatus')}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Логотип, Название, Описание -->
+              <div class="px-5 sm:px-8 pb-7 sm:pb-9 relative">
+                <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 -mt-12 sm:-mt-16 mb-5">
+                  <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 shadow-xl shrink-0 bg-white" style="border-color: var(--bg-card)">
+                    <img src="${escapeHtml(company.logo)}" alt="Logo"
+                      onerror="this.src='https://placehold.co/200x200/2563eb/ffffff?text=LOGO'"
+                      class="w-full h-full object-cover" />
+                  </div>
+                  <div class="flex-1 pt-1">
+                    <div class="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2" style="background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary)">
+                      ${escapeHtml(company.category)}
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">
+                      ${escapeHtml(company.name)}
+                    </h1>
+                  </div>
+                </div>
+
+                <p class="text-sm sm:text-base leading-relaxed max-w-3xl mb-6" style="color: var(--text-muted)">
+                  ${escapeHtml(company.description)}
+                </p>
+
+                <!-- Информационные карточки: Адрес, Телефон, График -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-7">
+                  <!-- Адрес -->
+                  <div class="p-4 rounded-2xl border flex items-start justify-between gap-3 ${d.darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50/90 border-slate-200/80'}">
+                    <div class="flex items-start gap-3 min-w-0">
+                      <div class="p-2 rounded-xl text-white shrink-0" style="background: var(--primary)">${Icons.pin}</div>
+                      <div class="min-w-0">
+                        <div class="text-xs font-semibold uppercase tracking-wider mb-0.5" style="color: var(--text-muted)">${t('addressLabel')}</div>
+                        <div class="text-sm font-semibold break-words">${escapeHtml(company.address)}</div>
+                      </div>
+                    </div>
+                    <button onclick="copyTextToClipboard('${escapeHtml(company.address).replace(/'/g, "\\'")}')"
+                      class="shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}">
+                      ${t('copyAddress')}
+                    </button>
+                  </div>
+
+                  <!-- Телефон -->
+                  <div class="p-4 rounded-2xl border flex items-start gap-3 ${d.darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50/90 border-slate-200/80'}">
+                    <div class="p-2 rounded-xl text-white shrink-0" style="background: var(--secondary)">${Icons.phone}</div>
+                    <div>
+                      <div class="text-xs font-semibold uppercase tracking-wider mb-0.5" style="color: var(--text-muted)">${t('phoneLabel')}</div>
+                      <a href="tel:${cleanPhone}" onclick="trackClick('callClicks')" class="text-sm font-bold hover:underline">${escapeHtml(company.phone)}</a>
+                    </div>
+                  </div>
+
+                  <!-- График работы -->
+                  <div class="p-4 rounded-2xl border flex items-start gap-3 ${d.darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50/90 border-slate-200/80'}">
+                    <div class="p-2 rounded-xl bg-emerald-600 text-white shrink-0">${Icons.clock}</div>
+                    <div>
+                      <div class="text-xs font-semibold uppercase tracking-wider mb-0.5" style="color: var(--text-muted)">${t('hoursLabel')}</div>
+                      <div class="text-sm font-semibold">${escapeHtml(company.hours)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 7 ГЛАВНЫХ ИНТЕРАКТИВНЫХ КНОПОК ДЕЙСТВИЯ -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <!-- 1. Оставить отзыв в 2ГИС -->
+                  <a href="${escapeHtml(socials.dgisUrl)}" target="_blank" rel="noopener noreferrer"
+                    onclick="trackClick('dgisClicks')"
+                    class="themed-btn ${btnGlowClass} px-4 py-3.5 font-bold text-sm text-white bg-[#19B533] hover:bg-[#159c2b] shadow-md flex items-center justify-center gap-2.5">
+                    ${Icons.dgis}
+                    <span>${t('btn2gisReview')}</span>
+                  </a>
+
+                  <!-- 2. Мы в Instagram -->
+                  <a href="${escapeHtml(socials.instagram)}" target="_blank" rel="noopener noreferrer"
+                    onclick="trackClick('instagramClicks')"
+                    class="themed-btn ${btnGlowClass} px-4 py-3.5 font-bold text-sm text-white bg-gradient-to-r from-amber-500 via-pink-500 to-purple-600 hover:opacity-95 shadow-md flex items-center justify-center gap-2.5">
+                    ${Icons.instagram}
+                    <span>${t('btnInstagram')}</span>
+                  </a>
+
+                  <!-- 3. Написать в WhatsApp -->
+                  <a href="${escapeHtml(waLink)}" target="_blank" rel="noopener noreferrer"
+                    onclick="trackClick('whatsappClicks')"
+                    class="themed-btn ${btnGlowClass} px-4 py-3.5 font-bold text-sm text-white bg-[#25D366] hover:bg-[#1fb858] shadow-md flex items-center justify-center gap-2.5">
+                    ${Icons.whatsapp}
+                    <span>${t('btnWhatsapp')}</span>
+                  </a>
+
+                  <!-- 4. Позвонить -->
+                  <a href="tel:${cleanPhone}"
+                    onclick="trackClick('callClicks')"
+                    class="themed-btn btn-primary-custom ${btnGlowClass} px-4 py-3.5 font-bold text-sm shadow-md flex items-center justify-center gap-2.5">
+                    ${Icons.phone}
+                    <span>${t('btnCall')}</span>
+                  </a>
+
+                  <!-- 5. Построить маршрут -->
+                  <a href="${escapeHtml(socials.routeUrl || socials.dgisUrl)}" target="_blank" rel="noopener noreferrer"
+                    onclick="trackClick('routeClicks')"
+                    class="themed-btn px-4 py-3 font-semibold text-sm border flex items-center justify-center gap-2 ${d.darkMode ? 'bg-slate-800/90 border-slate-700 hover:bg-slate-800' : 'bg-white border-slate-200 hover:bg-slate-50'}">
+                    <span style="color: var(--primary)">${Icons.route}</span>
+                    <span>${t('btnRoute')}</span>
+                  </a>
+
+                  <!-- 6. Наши услуги -->
+                  <button onclick="scrollToSection('section-services')"
+                    class="themed-btn px-4 py-3 font-semibold text-sm border flex items-center justify-center gap-2 ${d.darkMode ? 'bg-slate-800/90 border-slate-700 hover:bg-slate-800' : 'bg-white border-slate-200 hover:bg-slate-50'}">
+                    <span style="color: var(--primary)">${Icons.services}</span>
+                    <span>${t('btnServices')}</span>
+                  </button>
+
+                  <!-- 7. Наши акции -->
+                  <button onclick="scrollToSection('section-promos')"
+                    class="themed-btn sm:col-span-2 lg:col-span-2 px-4 py-3 font-semibold text-sm border flex items-center justify-center gap-2 ${d.darkMode ? 'bg-slate-800/90 border-slate-700 hover:bg-slate-800' : 'bg-white border-slate-200 hover:bg-slate-50'}">
+                    <span style="color: var(--secondary)">${Icons.promo}</span>
+                    <span>${t('btnPromos')}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- 2. СПЕЦИАЛЬНЫЙ ПРЕМИУМ-БЛОК ОТЗЫВОВ 2ГИС -->
+            <section class="themed-card ${cardExtraClass} p-6 sm:p-8 relative overflow-hidden border-2 border-[#19B533]/35 shadow-lg">
+              <div class="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-[#19B533]/10 blur-2xl pointer-events-none"></div>
+              <div class="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div class="space-y-2.5 max-w-2xl">
+                  <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#19B533]/15 text-[#19B533] font-bold text-xs">
+                    ${Icons.dgis}
+                    <span>2ГИС Казахстан • Официальная карточка</span>
+                    <span class="flex items-center gap-0.5 ml-1">${Icons.star}${Icons.star}${Icons.star}${Icons.star}${Icons.star}</span>
+                  </div>
+                  <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight">
+                    ${t('reviewBlockTitle')}
+                  </h2>
+                  <p class="text-sm leading-relaxed" style="color: var(--text-muted)">
+                    ${t('reviewBlockDesc')}
+                  </p>
+                </div>
+
+                <a href="${escapeHtml(socials.dgisUrl)}" target="_blank" rel="noopener noreferrer"
+                  onclick="trackClick('dgisClicks')"
+                  class="relative pulse-2gis themed-btn shrink-0 w-full md:w-auto px-6 py-4 rounded-2xl bg-[#19B533] hover:bg-[#159c2b] text-white font-extrabold text-sm sm:text-base shadow-xl flex items-center justify-center gap-3">
+                  ${Icons.dgis}
+                  <span>${t('reviewBlockBtn')}</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </a>
+              </div>
+            </section>
+
+            <!-- 3. БЛОК АКЦИЙ И СПЕЦПРЕДЛОЖЕНИЙ -->
+            ${promos.length > 0 ? `
+              <section id="section-promos" class="space-y-5 scroll-mt-24">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                  <div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">${t('promosTitle')}</h2>
+                    <p class="text-sm mt-1" style="color: var(--text-muted)">${t('promosSubtitle')}</p>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  ${promos.map(p => `
+                    <div class="themed-card themed-card-hover ${cardExtraClass} overflow-hidden flex flex-col">
+                      <div class="relative h-44 sm:h-48 w-full bg-slate-800">
+                        <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.title)}"
+                          onerror="this.src='https://placehold.co/800x400/0f172a/ffffff?text=Special+Offer'"
+                          class="w-full h-full object-cover" />
+                        <div class="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold text-white shadow-md" style="background: var(--primary)">
+                          🔥 ${t('promoValidUntil')} ${escapeHtml(p.validUntil)}
+                        </div>
+                      </div>
+                      <div class="p-5 sm:p-6 flex-1 flex flex-col justify-between gap-4">
+                        <div>
+                          <h3 class="text-lg font-extrabold mb-2">${escapeHtml(p.title)}</h3>
+                          <p class="text-sm leading-relaxed" style="color: var(--text-muted)">${escapeHtml(p.description)}</p>
+                        </div>
+                        <button onclick="inquireAboutItem('${escapeHtml(p.title).replace(/'/g, "\\'")}')"
+                          class="themed-btn btn-primary-custom w-full py-3 px-4 text-sm font-bold shadow-sm">
+                          ${t('promoClaimBtn')}
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </section>
+            ` : ''}
+
+            <!-- 4. КАТАЛОГ УСЛУГ (ЦЕНЫ В ТЕНГЕ ₸) -->
+            ${services.length > 0 ? `
+              <section id="section-services" class="space-y-5 scroll-mt-24">
+                <div>
+                  <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">${t('servicesTitle')}</h2>
+                  <p class="text-sm mt-1" style="color: var(--text-muted)">${t('servicesSubtitle')}</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  ${services.map(s => `
+                    <div class="themed-card themed-card-hover ${cardExtraClass} overflow-hidden flex flex-col">
+                      <div class="relative h-48 w-full bg-slate-800">
+                        <img src="${escapeHtml(s.image)}" alt="${escapeHtml(s.title)}"
+                          onerror="this.src='https://placehold.co/800x500/1e293b/ffffff?text=Service'"
+                          class="w-full h-full object-cover" />
+                        <div class="absolute bottom-3 right-3 px-3.5 py-1.5 rounded-xl font-extrabold text-sm sm:text-base text-white shadow-lg backdrop-blur-md" style="background: var(--primary)">
+                          ${formatTenge(s.price)}
+                        </div>
+                      </div>
+                      <div class="p-5 sm:p-6 flex-1 flex flex-col justify-between gap-4">
+                        <div>
+                          <h3 class="text-lg font-extrabold mb-1.5">${escapeHtml(s.title)}</h3>
+                          <p class="text-sm line-clamp-2 leading-relaxed" style="color: var(--text-muted)">${escapeHtml(s.description)}</p>
+                        </div>
+                        <div class="flex items-center gap-2.5 pt-1">
+                          <button onclick="openServiceModal('${s.id}')"
+                            class="themed-btn flex-1 py-2.5 px-4 text-sm font-bold border transition ${d.darkMode ? 'border-slate-700 bg-slate-800 hover:bg-slate-700' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}">
+                            ${t('serviceDetailsBtn')}
+                          </button>
+                          <button onclick="inquireAboutItem('${escapeHtml(s.title).replace(/'/g, "\\'")}')"
+                            class="themed-btn btn-primary-custom py-2.5 px-4 text-sm font-bold shadow-sm">
+                            ${t('serviceBookBtn')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </section>
+            ` : ''}
+
+            <!-- 5. ГАЛЕРЕЯ ФОТОГРАФИЙ (С LIGHTBOX) -->
+            ${gallery.length > 0 ? `
+              <section id="section-gallery" class="space-y-5">
+                <div>
+                  <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">${t('galleryTitle')}</h2>
+                  <p class="text-sm mt-1" style="color: var(--text-muted)">${t('gallerySubtitle')}</p>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+                  ${gallery.map((g, idx) => `
+                    <div onclick="openLightbox(${idx})"
+                      class="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer border shadow-sm ${d.darkMode ? 'border-slate-800' : 'border-slate-200'}">
+                      <img src="${escapeHtml(g.url)}" alt="${escapeHtml(g.caption || '')}"
+                        onerror="this.src='https://placehold.co/600x600/1e293b/ffffff?text=Photo'"
+                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                        <span class="text-white text-xs font-medium line-clamp-2">${escapeHtml(g.caption || 'Увеличить')}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </section>
+            ` : ''}
+
+            <!-- 6. КОНТАКТНАЯ ФОРМА ОБРАТНОЙ СВЯЗИ -->
+            <section id="section-contact" class="themed-card ${cardExtraClass} p-6 sm:p-8 shadow-lg scroll-mt-24">
+              <div class="max-w-2xl mx-auto">
+                <div class="text-center mb-6">
+                  <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">${t('contactTitle')}</h2>
+                  <p class="text-sm mt-1.5" style="color: var(--text-muted)">${t('contactSubtitle')}</p>
+                </div>
+
+                <form onsubmit="submitContactForm(event)" class="space-y-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">${t('formName')} *</label>
+                      <input type="text" id="contact-name" required placeholder="${t('formNamePlaceholder')}"
+                        class="w-full px-4 py-3 rounded-xl border text-sm outline-none transition focus:ring-2 ${d.darkMode ? 'bg-slate-900 border-slate-700 text-white focus:ring-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'}" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">${t('formPhone')} *</label>
+                      <input type="tel" id="contact-phone" required placeholder="${t('formPhonePlaceholder')}" oninput="formatKzPhoneInput(this)"
+                        class="w-full px-4 py-3 rounded-xl border text-sm outline-none transition focus:ring-2 ${d.darkMode ? 'bg-slate-900 border-slate-700 text-white focus:ring-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'}" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">${t('formMsg')}</label>
+                    <textarea id="contact-message" rows="3" placeholder="${t('formMsgPlaceholder')}"
+                      class="w-full px-4 py-3 rounded-xl border text-sm outline-none transition focus:ring-2 ${d.darkMode ? 'bg-slate-900 border-slate-700 text-white focus:ring-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'}"></textarea>
+                  </div>
+
+                  <button type="submit" class="themed-btn btn-primary-custom ${btnGlowClass} w-full py-3.5 px-6 text-sm sm:text-base font-extrabold shadow-lg">
+                    ${t('formSubmit')}
+                  </button>
+
+                  <p class="text-[11px] text-center leading-relaxed" style="color: var(--text-muted)">
+                    ℹ️ ${t('formDemoNote')}
+                  </p>
+                </form>
+              </div>
+            </section>
+          </main>
+
+          <!-- Футер -->
+          <footer class="border-t py-8 px-4 mt-10 ${d.darkMode ? 'border-slate-800/80 bg-slate-950/60' : 'border-slate-200/80 bg-white/60'}">
+            <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs" style="color: var(--text-muted)">
+              <div class="flex items-center gap-2">
+                <span>${t('footerPowered')}</span>
+                <strong class="font-extrabold" style="color: var(--text-main)">BusinessCard PRO</strong>
+                <span>• 🇰🇿 Казахстан (₸)</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span>${t('footerDemoDisclaimer')}</span>
+                <button onclick="navigateTo('admin')" class="font-bold underline hover:opacity-80" style="color: var(--primary)">
+                  ${t('ownerLoginBtn')}
+                </button>
+              </div>
+            </div>
+          </footer>
+        </div>
+      `;
+    }
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 8: СТРАНИЦА АВТОРИЗАЦИИ ВЛАДЕЛЬЦА
+     * ============================================================================
+     */
+    function renderLoginPage() {
+      const d = AppState.data.design;
+      return `
+        <div class="min-h-screen flex flex-col justify-center items-center px-4 py-10 ${d.darkMode ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-900'}">
+          <div class="w-full max-w-md space-y-5 animate-fade-up">
+            <div class="flex items-center justify-between">
+              <button onclick="navigateTo('public')" class="text-sm font-semibold hover:underline" style="color: var(--primary)">
+                ${t('loginBackSite')}
+              </button>
+              ${renderLanguageSwitcher()}
+            </div>
+
+            <div class="p-7 sm:p-8 rounded-3xl border shadow-2xl ${d.darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}">
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl mb-5 shadow-lg" style="background: linear-gradient(135deg, var(--primary), var(--secondary))">
+                B
+              </div>
+              <h1 class="text-2xl font-extrabold tracking-tight">${t('loginTitle')}</h1>
+              <p class="text-sm mt-1.5 mb-6" style="color: var(--text-muted)">${t('loginSubtitle')}</p>
+
+              <form onsubmit="handleOwnerLogin(event)" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">${t('loginUserLabel')}</label>
+                  <input type="text" id="login-username" required autocomplete="username" placeholder="admin"
+                    class="w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 ${d.darkMode ? 'bg-slate-800 border-slate-700 text-white focus:ring-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'}" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">${t('loginPassLabel')}</label>
+                  <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••"
+                    class="w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 ${d.darkMode ? 'bg-slate-800 border-slate-700 text-white focus:ring-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'}" />
+                </div>
+
+                <div id="login-error-box" class="hidden p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-500 text-xs font-semibold"></div>
+
+                <button type="submit" class="w-full py-3.5 px-5 rounded-xl font-extrabold text-sm text-white shadow-lg transition hover:opacity-95" style="background: linear-gradient(135deg, var(--primary), var(--secondary))">
+                  ${t('loginBtn')}
+                </button>
+              </form>
+
+              <div class="mt-4 pt-4 border-t ${d.darkMode ? 'border-slate-800' : 'border-slate-100'}">
+                <button type="button" onclick="autofillDemoCredentials()"
+                  class="w-full py-2.5 px-4 rounded-xl text-xs font-bold border transition ${d.darkMode ? 'border-slate-700 bg-slate-800/70 hover:bg-slate-800 text-slate-200' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'}">
+                  🔑 ${t('loginFillDemo')}
+                </button>
+              </div>
+            </div>
+
+            <!-- Предупреждение о безопасности -->
+            <div class="p-4 rounded-2xl border text-xs leading-relaxed ${d.darkMode ? 'bg-amber-950/30 border-amber-800/50 text-amber-200/90' : 'bg-amber-50 border-amber-200 text-amber-900'}">
+              <div class="font-bold mb-1">🛡️ ${t('securityNoticeTitle')}</div>
+              <p>${t('securityNoticeText')}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 9: АДМИНИСТРАТИВНАЯ ПАНЕЛЬ ВЛАДЕЛЬЦА (12 РАЗДЕЛОВ)
+     * ============================================================================
+     */
+    function renderAdminDashboard() {
+      const d = AppState.data.design;
+      const menuItems = [
+        { id: 'dashboard', icon: '📊', label: t('navDashboard') },
+        { id: 'company', icon: '🏢', label: t('navCompany') },
+        { id: 'design', icon: '🎨', label: t('navDesign') },
+        { id: 'socials', icon: '🌐', label: t('navSocials') },
+        { id: '2gis', icon: '📍', label: t('nav2gis') },
+        { id: 'services', icon: '💼', label: t('navServices') },
+        { id: 'promos', icon: '🔥', label: t('navPromos') },
+        { id: 'gallery', icon: '🖼️', label: t('navGallery') },
+        { id: 'qr', icon: '📱', label: t('navQr') },
+        { id: 'stats', icon: '📈', label: t('navStats') },
+        { id: 'account', icon: '⚙️', label: t('navAccount') }
+      ];
+
+      return `
+        <div class="min-h-screen flex flex-col lg:flex-row ${d.darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'}">
+          <!-- Мобильная шапка админ-панели -->
+          <div class="lg:hidden sticky top-0 z-40 px-4 h-16 border-b flex items-center justify-between ${d.darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}">
+            <div class="flex items-center gap-2.5">
+              <button onclick="AppState.mobileMenuOpen = !AppState.mobileMenuOpen; render()" class="p-2 rounded-xl border ${d.darkMode ? 'border-slate-700' : 'border-slate-200'}">
+                ☰
+              </button>
+              <span class="font-extrabold text-sm">BusinessCard <span style="color: var(--primary)">PRO</span></span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${renderLanguageSwitcher()}
+              <button onclick="navigateTo('public')" class="px-3 py-1.5 rounded-xl text-xs font-bold text-white" style="background: var(--primary)">
+                👁️ Сайт
+              </button>
+            </div>
+          </div>
+
+          <!-- Боковое меню (Sidebar) -->
+          <aside class="${AppState.mobileMenuOpen ? 'fixed inset-0 z-50 flex' : 'hidden'} lg:flex lg:w-72 lg:shrink-0 flex-col border-r ${d.darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}">
+            <div class="p-5 border-b flex items-center justify-between ${d.darkMode ? 'border-slate-800' : 'border-slate-100'}">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold shadow" style="background: linear-gradient(135deg, var(--primary), var(--secondary))">B</div>
+                <div>
+                  <div class="font-extrabold text-sm leading-none">BusinessCard PRO</div>
+                  <div class="text-[11px] mt-1 font-medium" style="color: var(--text-muted)">${t('adminPanelTitle')}</div>
+                </div>
+              </div>
+              <button onclick="AppState.mobileMenuOpen = false; render()" class="lg:hidden p-2 rounded-lg text-sm">✕</button>
+            </div>
+
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+              ${menuItems.map(item => {
+                const active = AppState.adminTab === item.id;
+                return `
+                  <button onclick="AppState.adminTab = '${item.id}'; AppState.mobileMenuOpen = false; render()"
+                    class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition text-left ${active
+                      ? 'text-white shadow-md'
+                      : (d.darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100')}"
+                    style="${active ? `background: var(--primary)` : ''}">
+                    <span class="text-base">${item.icon}</span>
+                    <span>${item.label}</span>
+                  </button>
+                `;
+              }).join('')}
+            </nav>
+
+            <div class="p-3 border-t space-y-2 ${d.darkMode ? 'border-slate-800' : 'border-slate-100'}">
+              <button onclick="navigateTo('public')"
+                class="w-full py-2.5 px-4 rounded-xl text-xs font-bold border flex items-center justify-center gap-2 transition ${d.darkMode ? 'border-slate-700 bg-slate-800 hover:bg-slate-700' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}">
+                <span>🌐</span>
+                <span>${t('viewPublicSite')}</span>
+              </button>
+              <button onclick="handleOwnerLogout()"
+                class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-2 transition">
+                <span>🚪</span>
+                <span>${t('navLogout')}</span>
+              </button>
+            </div>
+          </aside>
+
+          <!-- Основная рабочая область админки -->
+          <div class="flex-1 flex flex-col min-w-0">
+            <!-- Верхняя панель десктопа -->
+            <header class="hidden lg:flex h-16 px-8 border-b items-center justify-between ${d.darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white/80 border-slate-200'}">
+              <div class="text-sm font-bold" style="color: var(--text-muted)">
+                ${escapeHtml(AppState.data.company.name)}
+              </div>
+              <div class="flex items-center gap-3">
+                ${renderLanguageSwitcher()}
+                <button onclick="navigateTo('public')" class="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-95 transition" style="background: var(--primary)">
+                  👁️ ${t('viewPublicSite')}
+                </button>
+              </div>
+            </header>
+
+            <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl w-full mx-auto animate-fade-up">
+              ${renderAdminTabContent()}
+            </main>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAdminTabContent() {
+      const d = AppState.data.design;
+      const cardCls = `p-5 sm:p-6 rounded-2xl border shadow-sm ${d.darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`;
+      const inputCls = `w-full px-4 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 ${d.darkMode ? 'bg-slate-800 border-slate-700 text-white focus:ring-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-blue-500'}`;
+
+      switch (AppState.adminTab) {
+        /** 1. ГЛАВНАЯ (ОБЗОР) */
+        case 'dashboard': {
+          const { stats, leads, company } = AppState.data;
+          return `
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 class="text-2xl font-extrabold">${t('navDashboard')}</h1>
+                  <p class="text-sm mt-1" style="color: var(--text-muted)">Добро пожаловать в управление цифровой визиткой вашего бизнеса</p>
+                </div>
+                <button onclick="navigateTo('public')" class="px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-md" style="background: var(--primary)">
+                  Открыть публичную страницу →
+                </button>
+              </div>
+
+              <!-- Быстрые метрики -->
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="${cardCls}">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Открытия страницы</div>
+                  <div class="text-2xl sm:text-3xl font-extrabold mt-1">${stats.pageViews}</div>
+                  <div class="text-[11px] text-emerald-500 font-semibold mt-1">Демо-счётчик</div>
+                </div>
+                <div class="${cardCls}">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Переходы в 2ГИС</div>
+                  <div class="text-2xl sm:text-3xl font-extrabold mt-1 text-[#19B533]">${stats.dgisClicks}</div>
+                  <div class="text-[11px]" style="color: var(--text-muted)">Кнопка отзывов</div>
+                </div>
+                <div class="${cardCls}">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Клики WhatsApp</div>
+                  <div class="text-2xl sm:text-3xl font-extrabold mt-1 text-emerald-500">${stats.whatsappClicks}</div>
+                  <div class="text-[11px]" style="color: var(--text-muted)">Прямые чаты</div>
+                </div>
+                <div class="${cardCls}">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Заявки с сайта</div>
+                  <div class="text-2xl sm:text-3xl font-extrabold mt-1" style="color: var(--primary)">${leads.length}</div>
+                  <div class="text-[11px]" style="color: var(--text-muted)">Локальный журнал</div>
+                </div>
+              </div>
+
+              <!-- Быстрые действия -->
+              <div class="${cardCls}">
+                <h2 class="text-base font-extrabold mb-4">Быстрые действия</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <button onclick="AppState.adminTab='company'; render()" class="p-3.5 rounded-xl border text-left hover:opacity-85 transition ${d.darkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}">
+                    <div class="text-xl mb-1">🏢</div>
+                    <div class="text-xs font-bold">Изменить контакты</div>
+                  </button>
+                  <button onclick="AppState.adminTab='design'; render()" class="p-3.5 rounded-xl border text-left hover:opacity-85 transition ${d.darkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}">
+                    <div class="text-xl mb-1">🎨</div>
+                    <div class="text-xs font-bold">Настроить дизайн</div>
+                  </button>
+                  <button onclick="AppState.adminTab='services'; render()" class="p-3.5 rounded-xl border text-left hover:opacity-85 transition ${d.darkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}">
+                    <div class="text-xl mb-1">💼</div>
+                    <div class="text-xs font-bold">Добавить услугу</div>
+                  </button>
+                  <button onclick="AppState.adminTab='qr'; render()" class="p-3.5 rounded-xl border text-left hover:opacity-85 transition ${d.darkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}">
+                    <div class="text-xl mb-1">📱</div>
+                    <div class="text-xs font-bold">Скачать QR-код</div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Последние заявки из контактной формы -->
+              <div class="${cardCls}">
+                <div class="flex items-center justify-between mb-4">
+                  <h2 class="text-base font-extrabold">Заявки из контактной формы (Демо-журнал)</h2>
+                  ${leads.length > 0 ? `<button onclick="clearLeads()" class="text-xs text-red-500 font-semibold hover:underline">Очистить</button>` : ''}
+                </div>
+                ${leads.length === 0 ? `
+                  <p class="text-sm py-4 text-center" style="color: var(--text-muted)">Пока нет заявок. Попробуйте отправить тестовую заявку на главной странице.</p>
+                ` : `
+                  <div class="space-y-3">
+                    ${leads.map(l => `
+                      <div class="p-4 rounded-xl border ${d.darkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-100 bg-slate-50'}">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                          <span class="font-bold text-sm">${escapeHtml(l.name)} — <a href="tel:${escapeHtml(l.phone)}" class="underline">${escapeHtml(l.phone)}</a></span>
+                          <span class="text-xs" style="color: var(--text-muted)">${escapeHtml(l.createdAt)}</span>
+                        </div>
+                        <p class="text-xs sm:text-sm" style="color: var(--text-muted)">${escapeHtml(l.message || 'Без комментария')}</p>
+                      </div>
+                    `).join('')}
+                  </div>
+                `}
+              </div>
+            </div>
+          `;
+        }
+
+        /** 2. ИНФОРМАЦИЯ О КОМПАНИИ */
+        case 'company': {
+          const c = AppState.data.company;
+          return `
+            <form onsubmit="saveCompanyInfo(event)" class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navCompany')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Основные данные, которые увидят клиенты при сканировании QR или NFC</p>
+              </div>
+
+              <div class="${cardCls} space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Название организации *</label>
+                    <input type="text" id="cmp-name" required value="${escapeHtml(c.name)}" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Ниша / Слоган</label>
+                    <input type="text" id="cmp-category" value="${escapeHtml(c.category)}" class="${inputCls}" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Краткое описание бизнеса</label>
+                  <textarea id="cmp-desc" rows="3" class="${inputCls}">${escapeHtml(c.description)}</textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Адрес</label>
+                    <input type="text" id="cmp-address" value="${escapeHtml(c.address)}" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Телефон</label>
+                    <input type="text" id="cmp-phone" value="${escapeHtml(c.phone)}" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">График работы</label>
+                    <input type="text" id="cmp-hours" value="${escapeHtml(c.hours)}" class="${inputCls}" />
+                  </div>
+                </div>
+
+                <!-- Логотип и обложка с загрузкой файла -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                  <div class="p-4 rounded-xl border ${d.darkMode ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50/70'} space-y-3">
+                    <div class="flex items-center gap-3">
+                      <img id="cmp-logo-preview" src="${escapeHtml(c.logo)}" class="w-14 h-14 rounded-xl object-cover border" />
+                      <div>
+                        <div class="text-sm font-bold">Логотип компании</div>
+                        <div class="text-xs" style="color: var(--text-muted)">URL или загрузка с устройства</div>
+                      </div>
+                    </div>
+                    <input type="text" id="cmp-logo" value="${escapeHtml(c.logo)}" oninput="document.getElementById('cmp-logo-preview').src=this.value" placeholder="https://..." class="${inputCls}" />
+                    <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-white'}">
+                      📁 Загрузить файл логотипа
+                      <input type="file" accept="image/*" class="hidden" onchange="handleImageFileUpload(this.files[0], url => { document.getElementById('cmp-logo').value = url; document.getElementById('cmp-logo-preview').src = url; })" />
+                    </label>
+                  </div>
+
+                  <div class="p-4 rounded-xl border ${d.darkMode ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50/70'} space-y-3">
+                    <div class="flex items-center gap-3">
+                      <img id="cmp-cover-preview" src="${escapeHtml(c.cover)}" class="w-20 h-14 rounded-xl object-cover border" />
+                      <div>
+                        <div class="text-sm font-bold">Обложка (баннер)</div>
+                        <div class="text-xs" style="color: var(--text-muted)">Рекомендуется 1200×400 px</div>
+                      </div>
+                    </div>
+                    <input type="text" id="cmp-cover" value="${escapeHtml(c.cover)}" oninput="document.getElementById('cmp-cover-preview').src=this.value" placeholder="https://..." class="${inputCls}" />
+                    <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-white'}">
+                      📁 Загрузить обложку
+                      <input type="file" accept="image/*" class="hidden" onchange="handleImageFileUpload(this.files[0], url => { document.getElementById('cmp-cover').value = url; document.getElementById('cmp-cover-preview').src = url; })" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="px-6 py-3 rounded-xl font-extrabold text-sm text-white shadow-lg" style="background: var(--primary)">
+                💾 ${t('saveChanges')}
+              </button>
+            </form>
+          `;
+        }
+
+        /** 3. КОНСТРУКТОР ДИЗАЙНА */
+        case 'design': {
+          const cur = AppState.previewDesign || AppState.data.design;
+          return `
+            <div class="space-y-6">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 class="text-2xl font-extrabold">${t('navDesign')}</h1>
+                  <p class="text-sm mt-1" style="color: var(--text-muted)">Настройте фирменные цвета, шрифты, форму карточек и кнопок под ваш бренд</p>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <button type="button" onclick="openDesignPreview()" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition ${d.darkMode ? 'border-slate-700 bg-slate-800 hover:bg-slate-700' : 'border-slate-300 bg-white hover:bg-slate-50'}">
+                    👁️ Предпросмотр
+                  </button>
+                  <button type="button" onclick="saveDesignSettings()" class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold text-white shadow-lg" style="background: var(--primary)">
+                    💾 ${t('saveChanges')}
+                  </button>
+                </div>
+              </div>
+
+              <!-- 6 готовых цветовых тем -->
+              <div class="${cardCls} space-y-4">
+                <h2 class="text-base font-extrabold">Готовые цветовые темы (в 1 клик)</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  ${DESIGN_PRESETS.map(p => {
+                    const selected = cur.preset === p.id;
+                    return `
+                      <button type="button" onclick="selectDesignPreset('${p.id}')"
+                        class="p-4 rounded-2xl border-2 text-left transition flex items-center justify-between ${selected ? 'ring-2 ring-offset-2' : 'opacity-90 hover:opacity-100'}"
+                        style="border-color: ${selected ? p.primary : (d.darkMode ? '#262b36' : '#e2e8f0')}; background: ${d.darkMode ? '#14171f' : '#ffffff'}">
+                        <div>
+                          <div class="font-extrabold text-sm">${p.name}</div>
+                          <div class="text-xs mt-0.5" style="color: var(--text-muted)">${p.desc}</div>
+                        </div>
+                        <div class="flex items-center -space-x-1.5">
+                          <span class="w-6 h-6 rounded-full border-2 border-white shadow" style="background: ${p.primary}"></span>
+                          <span class="w-6 h-6 rounded-full border-2 border-white shadow" style="background: ${p.secondary}"></span>
+                          <span class="w-6 h-6 rounded-full border-2 border-slate-300 shadow" style="background: ${p.bgPage}"></span>
+                        </div>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Тонкая ручная настройка палитры и темы -->
+              <div class="${cardCls} space-y-5">
+                <h2 class="text-base font-extrabold">Индивидуальная палитра и режим</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Основной цвет</label>
+                    <div class="flex items-center gap-2">
+                      <input type="color" id="dsg-primary" value="${cur.primaryColor}" onchange="updateDraftDesign('primaryColor', this.value)" class="w-11 h-10 rounded-lg cursor-pointer border-0" />
+                      <input type="text" value="${cur.primaryColor}" readonly class="${inputCls} font-mono text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Дополнительный цвет</label>
+                    <div class="flex items-center gap-2">
+                      <input type="color" id="dsg-secondary" value="${cur.secondaryColor}" onchange="updateDraftDesign('secondaryColor', this.value)" class="w-11 h-10 rounded-lg cursor-pointer border-0" />
+                      <input type="text" value="${cur.secondaryColor}" readonly class="${inputCls} font-mono text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Цвет фона страницы</label>
+                    <div class="flex items-center gap-2">
+                      <input type="color" id="dsg-bg" value="${cur.bgColor}" onchange="updateDraftDesign('bgColor', this.value)" class="w-11 h-10 rounded-lg cursor-pointer border-0" />
+                      <input type="text" value="${cur.bgColor}" readonly class="${inputCls} font-mono text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Тема оформления</label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button type="button" onclick="updateDraftDesign('darkMode', false)"
+                        class="py-2.5 px-3 rounded-xl text-xs font-bold border ${!cur.darkMode ? 'text-white border-transparent' : 'border-slate-700'}"
+                        style="${!cur.darkMode ? `background: var(--primary)` : ''}">☀️ Светлая</button>
+                      <button type="button" onclick="updateDraftDesign('darkMode', true)"
+                        class="py-2.5 px-3 rounded-xl text-xs font-bold border ${cur.darkMode ? 'text-white border-transparent' : 'border-slate-300'}"
+                        style="${cur.darkMode ? `background: var(--primary)` : ''}">🌙 Тёмная</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Типографика, стиль кнопок, форма карточек и фон -->
+              <div class="${cardCls} space-y-5">
+                <h2 class="text-base font-extrabold">Шрифт, кнопки, карточки и фоновое изображение</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Шрифт сайта</label>
+                    <select onchange="updateDraftDesign('fontFamily', this.value)" class="${inputCls}">
+                      ${['Inter', 'Montserrat', 'Manrope', 'Playfair Display'].map(f => `
+                        <option value="${f}" ${cur.fontFamily === f ? 'selected' : ''}>${f}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Стиль кнопок</label>
+                    <select onchange="updateDraftDesign('btnStyle', this.value)" class="${inputCls}">
+                      <option value="rounded" ${cur.btnStyle === 'rounded' ? 'selected' : ''}>Классические скруглённые</option>
+                      <option value="pill" ${cur.btnStyle === 'pill' ? 'selected' : ''}>Капсула (Pill)</option>
+                      <option value="sharp" ${cur.btnStyle === 'sharp' ? 'selected' : ''}>Строгие прямоугольные</option>
+                      <option value="glow" ${cur.btnStyle === 'glow' ? 'selected' : ''}>С неоновым свечением</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Форма карточек</label>
+                    <select onchange="updateDraftDesign('cardStyle', this.value)" class="${inputCls}">
+                      <option value="soft" ${cur.cardStyle === 'soft' ? 'selected' : ''}>Мягкое скругление</option>
+                      <option value="large" ${cur.cardStyle === 'large' ? 'selected' : ''}>Крупное скругление (2XL)</option>
+                      <option value="sharp" ${cur.cardStyle === 'sharp' ? 'selected' : ''}>Строгая геометрия</option>
+                      <option value="glass" ${cur.cardStyle === 'glass' ? 'selected' : ''}>Стекломорфизм (Blur)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Фоновое изображение страницы (опционально)</label>
+                  <div class="flex flex-col sm:flex-row gap-2.5">
+                    <input type="text" id="dsg-bg-img" value="${escapeHtml(cur.bgImage || '')}" onchange="updateDraftDesign('bgImage', this.value)" placeholder="URL фоновой картинки или оставьте пустым" class="${inputCls}" />
+                    <label class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border cursor-pointer hover:opacity-80 ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'}">
+                      📁 Загрузить фон
+                      <input type="file" accept="image/*" class="hidden" onchange="handleImageFileUpload(this.files[0], url => updateDraftDesign('bgImage', url))" />
+                    </label>
+                    ${cur.bgImage ? `<button type="button" onclick="updateDraftDesign('bgImage', '')" class="shrink-0 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 border border-red-500/30">Очистить</button>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        /** 4. СОЦИАЛЬНЫЕ СЕТИ И МЕССЕНДЖЕРЫ */
+        case 'socials': {
+          const s = AppState.data.socials;
+          return `
+            <form onsubmit="saveSocials(event)" class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navSocials')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Укажите актуальные ссылки на соцсети, мессенджеры и навигатор</p>
+              </div>
+
+              <div class="${cardCls} space-y-4">
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Ссылка на Instagram</label>
+                  <input type="url" id="soc-instagram" value="${escapeHtml(s.instagram)}" placeholder="https://instagram.com/your_business" class="${inputCls}" />
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Номер WhatsApp (цифрами, например 77000000000)</label>
+                    <input type="text" id="soc-wa-phone" value="${escapeHtml(s.whatsappPhone)}" placeholder="77000000000" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Прямая ссылка WhatsApp (wa.me)</label>
+                    <input type="url" id="soc-whatsapp" value="${escapeHtml(s.whatsapp)}" placeholder="https://wa.me/77000000000" class="${inputCls}" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Ссылка для кнопки «Построить маршрут» (2ГИС / Карты)</label>
+                  <input type="url" id="soc-route" value="${escapeHtml(s.routeUrl)}" placeholder="https://2gis.kz/astana/..." class="${inputCls}" />
+                </div>
+              </div>
+
+              <button type="submit" class="px-6 py-3 rounded-xl font-extrabold text-sm text-white shadow-lg" style="background: var(--primary)">
+                💾 ${t('saveChanges')}
+              </button>
+            </form>
+          `;
+        }
+
+        /** 5. ССЫЛКА 2ГИС */
+        case '2gis': {
+          const s = AppState.data.socials;
+          return `
+            <form onsubmit="save2GisLink(event)" class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('nav2gis')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Настройка прямой переадресации клиентов на карточку отзывов в 2ГИС Казахстан</p>
+              </div>
+
+              <div class="${cardCls} space-y-4">
+                <div class="p-4 rounded-2xl bg-[#19B533]/10 border border-[#19B533]/30 flex items-start gap-3">
+                  ${Icons.dgis}
+                  <div class="text-xs sm:text-sm leading-relaxed">
+                    <strong>Как получить прямую ссылку на отзывы в 2ГИС:</strong><br/>
+                    Откройте вашу компанию в приложении или на сайте 2gis.kz → перейдите во вкладку «Отзывы» → нажмите «Поделиться» и скопируйте ссылку. Клиент после сканирования QR сразу попадёт на форму отзыва в 2ГИС.
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1.5" style="color: var(--text-muted)">Официальная ссылка на карточку организации в 2ГИС *</label>
+                  <input type="url" id="dgis-url-input" required value="${escapeHtml(s.dgisUrl)}" placeholder="https://2gis.kz/astana/firm/..." class="${inputCls}" />
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 pt-1">
+                  <button type="submit" class="px-6 py-3 rounded-xl font-extrabold text-sm text-white bg-[#19B533] hover:bg-[#159c2b] shadow-lg">
+                    💾 ${t('saveChanges')}
+                  </button>
+                  <a href="${escapeHtml(s.dgisUrl)}" target="_blank" rel="noopener noreferrer"
+                    class="px-4 py-3 rounded-xl text-xs sm:text-sm font-bold border ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'}">
+                    🔗 Проверить переход в новой вкладке
+                  </a>
+                </div>
+              </div>
+            </form>
+          `;
+        }
+
+        /** 6. УСЛУГИ (КАТАЛОГ В ТЕНГЕ) */
+        case 'services': {
+          const services = AppState.data.services;
+          return `
+            <div class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navServices')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Добавляйте и редактируйте услуги или популярные товары с ценой в тенге (₸)</p>
+              </div>
+
+              <!-- Форма добавления новой услуги -->
+              <form onsubmit="addNewService(event)" class="${cardCls} space-y-4">
+                <h2 class="text-base font-extrabold">+ Добавить новую услугу</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="md:col-span-2">
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Название услуги *</label>
+                    <input type="text" id="new-srv-title" required placeholder="Например: Классический маникюр" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Цена в тенге (₸) *</label>
+                    <input type="number" id="new-srv-price" required min="0" step="10" placeholder="5000" class="${inputCls}" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Описание услуги</label>
+                  <textarea id="new-srv-desc" rows="2" placeholder="Подробное описание, длительность, что входит в стоимость..." class="${inputCls}"></textarea>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <input type="text" id="new-srv-img" placeholder="URL фотографии или загрузите файл справа" class="${inputCls}" />
+                  <label class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border cursor-pointer ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'}">
+                    📁 Загрузить фото
+                    <input type="file" accept="image/*" class="hidden" onchange="handleImageFileUpload(this.files[0], url => { document.getElementById('new-srv-img').value = url; showToast('Фото услуги загружено', 'info'); })" />
+                  </label>
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl font-extrabold text-sm text-white shadow" style="background: var(--primary)">
+                  + Добавить в каталог
+                </button>
+              </form>
+
+              <!-- Список текущих услуг -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${services.map(s => `
+                  <div class="${cardCls} flex gap-4 items-start">
+                    <img src="${escapeHtml(s.image)}" onerror="this.src='https://placehold.co/200x200/1e293b/ffffff?text=Service'" class="w-20 h-20 rounded-xl object-cover shrink-0 border" />
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-sm truncate">${escapeHtml(s.title)}</h3>
+                        <span class="font-extrabold text-sm shrink-0" style="color: var(--primary)">${formatTenge(s.price)}</span>
+                      </div>
+                      <p class="text-xs line-clamp-2 mt-1" style="color: var(--text-muted)">${escapeHtml(s.description)}</p>
+                      <button onclick="deleteService('${s.id}')" class="mt-2.5 text-xs font-bold text-red-500 hover:underline">
+                        🗑️ Удалить услугу
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        /** 7. АКЦИИ И СПЕЦПРЕДЛОЖЕНИЯ */
+        case 'promos': {
+          const promos = AppState.data.promos;
+          return `
+            <div class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navPromos')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Управляйте спецпредложениями для посетителей вашей цифровой визитки</p>
+              </div>
+
+              <form onsubmit="addNewPromo(event)" class="${cardCls} space-y-4">
+                <h2 class="text-base font-extrabold">+ Создать акцию</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="md:col-span-2">
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Заголовок акции *</label>
+                    <input type="text" id="new-prm-title" required placeholder="Например: Скидка 15% на первый визит" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Срок действия *</label>
+                    <input type="text" id="new-prm-valid" required placeholder="До 31.12.2026" class="${inputCls}" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Условия акции</label>
+                  <textarea id="new-prm-desc" rows="2" placeholder="Опишите условия получения бонуса..." class="${inputCls}"></textarea>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <input type="text" id="new-prm-img" placeholder="URL баннера акции или загрузите файл" class="${inputCls}" />
+                  <label class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border cursor-pointer ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'}">
+                    📁 Загрузить фото
+                    <input type="file" accept="image/*" class="hidden" onchange="handleImageFileUpload(this.files[0], url => { document.getElementById('new-prm-img').value = url; showToast('Изображение акции загружено', 'info'); })" />
+                  </label>
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl font-extrabold text-sm text-white shadow" style="background: var(--primary)">
+                  + Опубликовать акцию
+                </button>
+              </form>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${promos.map(p => `
+                  <div class="${cardCls} flex gap-4 items-start">
+                    <img src="${escapeHtml(p.image)}" onerror="this.src='https://placehold.co/200x200/1e293b/ffffff?text=Promo'" class="w-20 h-20 rounded-xl object-cover shrink-0 border" />
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[11px] font-bold" style="color: var(--primary)">Срок: ${escapeHtml(p.validUntil)}</div>
+                      <h3 class="font-bold text-sm truncate mt-0.5">${escapeHtml(p.title)}</h3>
+                      <p class="text-xs line-clamp-2 mt-1" style="color: var(--text-muted)">${escapeHtml(p.description)}</p>
+                      <button onclick="deletePromo('${p.id}')" class="mt-2.5 text-xs font-bold text-red-500 hover:underline">
+                        🗑️ Удалить акцию
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        /** 8. ГАЛЕРЕЯ ФОТОГРАФИЙ */
+        case 'gallery': {
+          const gallery = AppState.data.gallery;
+          return `
+            <div class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navGallery')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Добавляйте фотографии интерьера, товаров или выполненных работ</p>
+              </div>
+
+              <form onsubmit="addGalleryPhoto(event)" class="${cardCls} space-y-4">
+                <h2 class="text-base font-extrabold">+ Добавить фото в галерею</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Ссылка на фото или загрузка *</label>
+                    <div class="flex gap-2">
+                      <input type="text" id="new-gal-url" required placeholder="https://..." class="${inputCls}" />
+                      <label class="shrink-0 inline-flex items-center px-3.5 py-2.5 rounded-xl text-xs font-bold border cursor-pointer ${d.darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'}">
+                        📁 Файл
+                        <input type="file" accept="image/*" class="hidden" onchange="handleImageFileUpload(this.files[0], url => { document.getElementById('new-gal-url').value = url; showToast('Фото подготовлено', 'info'); })" />
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Подпись к фотографии</label>
+                    <input type="text" id="new-gal-caption" placeholder="Например: Уютный зал для гостей" class="${inputCls}" />
+                  </div>
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl font-extrabold text-sm text-white shadow" style="background: var(--primary)">
+                  + Добавить в галерею
+                </button>
+              </form>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                ${gallery.map(g => `
+                  <div class="${cardCls} !p-2.5 space-y-2">
+                    <img src="${escapeHtml(g.url)}" onerror="this.src='https://placehold.co/400x400/1e293b/ffffff?text=Photo'" class="w-full aspect-square object-cover rounded-xl" />
+                    <div class="text-xs font-medium truncate px-1">${escapeHtml(g.caption || 'Без подписи')}</div>
+                    <button onclick="deleteGalleryPhoto('${g.id}')" class="w-full py-1.5 rounded-lg text-xs font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20">
+                      Удалить
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        /** 9. ГЕНЕРАТОР QR-КОДА И ТЕЙБЛ-ТЕНТА */
+        case 'qr': {
+          const { company, qrSettings } = AppState.data;
+          const currentUrl = window.location.href.split('#')[0];
+          return `
+            <div class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navQr')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Готовый QR-код вашей цифровой визитки для размещения на столах, ресепшене и NFC-картах</p>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <!-- Карточка-тейбл-тент -->
+                <div class="${cardCls} flex flex-col items-center text-center p-8">
+                  <div class="p-6 rounded-3xl bg-white text-slate-900 border-2 border-slate-200 shadow-xl max-w-xs w-full space-y-4">
+                    <div class="font-extrabold text-lg leading-tight">${escapeHtml(company.name)}</div>
+                    <div id="admin-qr-container" class="flex items-center justify-center p-3 bg-white rounded-2xl border border-slate-100 mx-auto w-[216px] h-[216px]"></div>
+                    <div class="text-xs font-bold text-slate-800 leading-snug">${escapeHtml(qrSettings.caption)}</div>
+                    <div class="text-[11px] text-slate-500">${escapeHtml(qrSettings.subCaption)}</div>
+                    <div class="pt-2 border-t border-slate-100 text-[10px] font-bold tracking-wider uppercase text-blue-600">
+                      BusinessCard PRO • 2ГИС • Instagram • WhatsApp
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Настройки и кнопки экспорта -->
+                <div class="${cardCls} space-y-5">
+                  <h2 class="text-base font-extrabold">Настройка таблички и экспорт</h2>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Ссылка, зашитая в QR-код</label>
+                    <input type="text" id="qr-target-url" value="${escapeHtml(currentUrl)}" oninput="generateQrCodeInstance(this.value)" class="${inputCls} font-mono text-xs" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Призыв к действию под QR</label>
+                    <input type="text" value="${escapeHtml(qrSettings.caption)}" oninput="updateQrCaption('caption', this.value)" class="${inputCls}" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted)">Дополнительная подсказка (NFC / Камера)</label>
+                    <input type="text" value="${escapeHtml(qrSettings.subCaption)}" oninput="updateQrCaption('subCaption', this.value)" class="${inputCls}" />
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <button type="button" onclick="downloadQrPng()" class="py-3 px-4 rounded-xl font-extrabold text-sm text-white shadow-lg flex items-center justify-center gap-2" style="background: var(--primary)">
+                      ⬇️ Скачать QR (PNG)
+                    </button>
+                    <button type="button" onclick="printQrTableTent()" class="py-3 px-4 rounded-xl font-extrabold text-sm border flex items-center justify-center gap-2 ${d.darkMode ? 'border-slate-700 bg-slate-800 hover:bg-slate-700' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'}">
+                      🖨️ Распечатать тейбл-тент
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        /** 10. СТАТИСТИКА ПОСЕЩЕНИЙ */
+        case 'stats': {
+          const s = AppState.data.stats;
+          const totalInteractions = s.instagramClicks + s.dgisClicks + s.whatsappClicks + s.callClicks + s.routeClicks;
+          const bars = [
+            { label: 'Переходы в 2ГИС (Отзывы)', value: s.dgisClicks, color: '#19B533' },
+            { label: 'Переходы в Instagram', value: s.instagramClicks, color: '#ec4899' },
+            { label: 'Нажатия на WhatsApp', value: s.whatsappClicks, color: '#25D366' },
+            { label: 'Построение маршрута', value: s.routeClicks, color: '#0284c7' },
+            { label: 'Нажатия «Позвонить»', value: s.callClicks, color: '#f59e0b' }
+          ];
+          const maxVal = Math.max(...bars.map(b => b.value), 1);
+
+          return `
+            <div class="space-y-6">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 class="text-2xl font-extrabold">${t('navStats')}</h1>
+                  <p class="text-sm mt-1" style="color: var(--text-muted)">Локальный демонстрационный счётчик конверсий вашей визитки</p>
+                </div>
+                <span class="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  🧪 Локальный демо-режим (LocalStorage)
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div class="${cardCls}">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Всего открытий страницы</div>
+                  <div class="text-3xl font-extrabold mt-1">${s.pageViews}</div>
+                </div>
+                <div class="${cardCls}">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Целевых кликов по кнопкам</div>
+                  <div class="text-3xl font-extrabold mt-1" style="color: var(--primary)">${totalInteractions}</div>
+                </div>
+                <div class="${cardCls} col-span-2 sm:col-span-1">
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)">Вовлечённость (CTR)</div>
+                  <div class="text-3xl font-extrabold mt-1 text-emerald-500">${s.pageViews ? Math.round((totalInteractions / s.pageViews) * 100) : 0}%</div>
+                </div>
+              </div>
+
+              <div class="${cardCls} space-y-5">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-base font-extrabold">Распределение переходов по каналам</h2>
+                  <button onclick="resetDemoStats()" class="text-xs font-bold text-red-500 hover:underline">Сбросить счётчики</button>
+                </div>
+
+                <div class="space-y-4">
+                  ${bars.map(b => `
+                    <div>
+                      <div class="flex justify-between text-xs sm:text-sm font-bold mb-1.5">
+                        <span>${b.label}</span>
+                        <span>${b.value}</span>
+                      </div>
+                      <div class="w-full h-3 rounded-full overflow-hidden ${d.darkMode ? 'bg-slate-800' : 'bg-slate-100'}">
+                        <div class="h-full rounded-full transition-all duration-500" style="width: ${Math.round((b.value / maxVal) * 100)}%; background: ${b.color}"></div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        /** 11. НАСТРОЙКИ АККАУНТА И ЭКСПОРТ JSON */
+        case 'account': {
+          return `
+            <div class="space-y-6">
+              <div>
+                <h1 class="text-2xl font-extrabold">${t('navAccount')}</h1>
+                <p class="text-sm mt-1" style="color: var(--text-muted)">Управление конфигурацией, резервное копирование и архитектура безопасности</p>
+              </div>
+
+              <div class="${cardCls} space-y-4">
+                <h2 class="text-base font-extrabold">Резервное копирование и перенос данных (JSON)</h2>
+                <p class="text-xs sm:text-sm leading-relaxed" style="color: var(--text-muted)">
+                  Модульная архитектура BusinessCard PRO позволяет выгрузить все настройки, услуги, акции и оформление в JSON-файл для переноса на сервер или создания шаблона для филиала.
+                </p>
+                <div class="flex flex-wrap gap-3">
+                  <button onclick="exportConfigJson()" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white shadow" style="background: var(--primary)">
+                    📤 Экспортировать JSON-конфигурацию
+                  </button>
+                  <button onclick="resetAllFactoryDefaults()" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-red-500 border border-red-500/30 hover:bg-red-500/10">
+                    🔄 Сбросить все настройки к демо по умолчанию
+                  </button>
+                </div>
+              </div>
+
+              <div class="${cardCls} space-y-2 border-amber-500/30">
+                <h2 class="text-base font-extrabold text-amber-500">🛡️ Коммерческая безопасность и масштабирование</h2>
+                <ul class="text-xs sm:text-sm space-y-1.5 list-disc pl-5" style="color: var(--text-muted)">
+                  <li>Демонстрационный вход (<code>admin / admin123</code>) работает локально в браузере и не хранит реальные пароли в LocalStorage.</li>
+                  <li>Для коммерческого запуска сети клиентов предусмотрена замена <code>StorageService</code> на REST/GraphQL API с PostgreSQL/MongoDB, JWT-авторизацией и ролевой моделью доступа (RBAC).</li>
+                </ul>
+              </div>
+            </div>
+          `;
+        }
+      }
+    }
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 10: ОБРАБОТЧИКИ ДЕЙСТВИЙ ПОЛЬЗОВАТЕЛЯ И АДМИН-ПАНЕЛИ
+     * ============================================================================
+     */
+    function copyTextToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast(`${t('copied')} ${text}`);
+      } catch (e) {
+        showToast('Не удалось скопировать', 'error');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function inquireAboutItem(title) {
+      scrollToSection('section-contact');
+      setTimeout(() => {
+        const msgInput = document.getElementById('contact-message');
+        const nameInput = document.getElementById('contact-name');
+        if (msgInput) {
+          msgInput.value = `Здравствуйте! Интересует: «${title}». Подскажите, пожалуйста, детали.`;
+        }
+        if (nameInput) nameInput.focus();
+      }, 450);
+    }
+
+    function formatKzPhoneInput(input) {
+      let digits = input.value.replace(/\D/g, '');
+      if (!digits) {
+        input.value = '';
+        return;
+      }
+      if (digits[0] === '8') digits = '7' + digits.slice(1);
+      if (digits[0] !== '7') digits = '7' + digits;
+      digits = digits.slice(0, 11);
+
+      let formatted = '+7';
+      if (digits.length > 1) formatted += ' (' + digits.slice(1, 4);
+      if (digits.length >= 4) formatted += ') ' + digits.slice(4, 7);
+      if (digits.length >= 7) formatted += '-' + digits.slice(7, 9);
+      if (digits.length >= 9) formatted += '-' + digits.slice(9, 11);
+      input.value = formatted;
+    }
+
+    function submitContactForm(e) {
+      e.preventDefault();
+      const nameEl = document.getElementById('contact-name');
+      const phoneEl = document.getElementById('contact-phone');
+      const msgEl = document.getElementById('contact-message');
+
+      const name = (nameEl.value || '').trim();
+      const phone = (phoneEl.value || '').trim();
+      const message = (msgEl.value || '').trim();
+
+      if (name.length < 2 || phone.replace(/\D/g, '').length < 10) {
+        showToast(t('formError'), 'error');
+        return;
+      }
+
+      const now = new Date();
+      const timestamp = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+      AppState.data.leads.unshift({
+        id: 'lead-' + Date.now(),
+        name,
+        phone,
+        message,
+        createdAt: timestamp
+      });
+      StorageService.saveState(AppState.data);
+
+      nameEl.value = '';
+      phoneEl.value = '';
+      msgEl.value = '';
+      showToast(t('formSuccess'), 'success');
+    }
+
+    // Модальное окно услуги
+    function openServiceModal(serviceId) {
+      const s = AppState.data.services.find(item => item.id === serviceId);
+      if (!s) return;
+      const d = AppState.previewDesign || AppState.data.design;
+      const waLink = AppState.data.socials.whatsapp || `https://wa.me/${(AppState.data.socials.whatsappPhone || '77000000000').replace(/\D/g, '')}`;
+      const modalRoot = document.getElementById('modal-root');
+
+      modalRoot.innerHTML = `
+        <div onclick="if(event.target===this) closeModal()" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-up">
+          <div class="w-full max-w-lg rounded-3xl overflow-hidden border shadow-2xl ${d.darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}">
+            <div class="relative h-56 bg-slate-800">
+              <img src="${escapeHtml(s.image)}" onerror="this.src='https://placehold.co/800x500/1e293b/ffffff?text=Service'" class="w-full h-full object-cover" />
+              <button onclick="closeModal()" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black">✕</button>
+              <div class="absolute bottom-3 left-4 px-4 py-1.5 rounded-xl font-extrabold text-base text-white shadow-lg" style="background: var(--primary)">
+                ${formatTenge(s.price)}
+              </div>
+            </div>
+            <div class="p-6 space-y-4">
+              <h3 class="text-xl font-extrabold">${escapeHtml(s.title)}</h3>
+              <p class="text-sm leading-relaxed" style="color: var(--text-muted)">${escapeHtml(s.description)}</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button onclick="closeModal(); inquireAboutItem('${escapeHtml(s.title).replace(/'/g, "\\'")}')"
+                  class="themed-btn btn-primary-custom py-3 px-4 text-sm font-bold shadow">
+                  ${t('serviceBookBtn')}
+                </button>
+                <a href="${escapeHtml(waLink)}" target="_blank" rel="noopener noreferrer" onclick="trackClick('whatsappClicks')"
+                  class="themed-btn py-3 px-4 text-sm font-bold text-white bg-[#25D366] hover:bg-[#1fb858] flex items-center justify-center gap-2">
+                  ${Icons.whatsapp}
+                  <span>${t('serviceWhatsappBtn')}</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Lightbox галереи
+    function openLightbox(index) {
+      AppState.lightboxIndex = index;
+      renderLightbox();
+    }
+
+    function renderLightbox() {
+      const gallery = AppState.data.gallery;
+      if (AppState.lightboxIndex === null || !gallery[AppState.lightboxIndex]) return;
+      const item = gallery[AppState.lightboxIndex];
+      const modalRoot = document.getElementById('modal-root');
+
+      modalRoot.innerHTML = `
+        <div onclick="if(event.target===this) closeModal()" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4">
+          <button onclick="closeModal()" class="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/15 text-white text-lg hover:bg-white/25">✕</button>
+          <div class="relative max-w-4xl w-full flex items-center justify-center">
+            ${gallery.length > 1 ? `
+              <button onclick="stepLightbox(-1)" class="absolute left-2 sm:left-4 w-10 h-10 rounded-full bg-black/60 text-white hover:bg-black flex items-center justify-center text-xl">‹</button>
+            ` : ''}
+            <img src="${escapeHtml(item.url)}" class="max-h-[78vh] w-auto rounded-2xl shadow-2xl object-contain" />
+            ${gallery.length > 1 ? `
+              <button onclick="stepLightbox(1)" class="absolute right-2 sm:right-4 w-10 h-10 rounded-full bg-black/60 text-white hover:bg-black flex items-center justify-center text-xl">›</button>
+            ` : ''}
+          </div>
+          <div class="mt-4 text-center text-white">
+            <div class="text-sm font-semibold">${escapeHtml(item.caption || '')}</div>
+            <div class="text-xs text-white/60 mt-1">${AppState.lightboxIndex + 1} / ${gallery.length}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function stepLightbox(dir) {
+      const len = AppState.data.gallery.length;
+      if (!len) return;
+      AppState.lightboxIndex = (AppState.lightboxIndex + dir + len) % len;
+      renderLightbox();
+    }
+
+    function closeModal() {
+      AppState.lightboxIndex = null;
+      const modalRoot = document.getElementById('modal-root');
+      if (modalRoot) modalRoot.innerHTML = '';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+      if (AppState.lightboxIndex !== null) {
+        if (e.key === 'ArrowRight') stepLightbox(1);
+        if (e.key === 'ArrowLeft') stepLightbox(-1);
+      }
+    });
+
+    // Авторизация владельца
+    function autofillDemoCredentials() {
+      const u = document.getElementById('login-username');
+      const p = document.getElementById('login-password');
+      if (u) u.value = 'admin';
+      if (p) p.value = 'admin123';
+    }
+
+    function handleOwnerLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      if (StorageService.login(username, password)) {
+        AppState.route = 'admin';
+        AppState.adminTab = 'dashboard';
+        render();
+        showToast('Вход выполнен успешно!');
+      } else {
+        const errBox = document.getElementById('login-error-box');
+        if (errBox) {
+          errBox.textContent = t('loginError');
+          errBox.classList.remove('hidden');
+        }
+      }
+    }
+
+    function handleOwnerLogout() {
+      StorageService.logout();
+      AppState.previewDesign = null;
+      AppState.route = 'public';
+      render();
+      showToast('Вы вышли из кабинета владельца', 'info');
+    }
+
+    // Сохранение настроек в админке
+    function saveCompanyInfo(e) {
+      e.preventDefault();
+      AppState.data.company = {
+        name: document.getElementById('cmp-name').value.trim(),
+        category: document.getElementById('cmp-category').value.trim(),
+        description: document.getElementById('cmp-desc').value.trim(),
+        address: document.getElementById('cmp-address').value.trim(),
+        phone: document.getElementById('cmp-phone').value.trim(),
+        hours: document.getElementById('cmp-hours').value.trim(),
+        logo: document.getElementById('cmp-logo').value.trim() || DEFAULT_STATE.company.logo,
+        cover: document.getElementById('cmp-cover').value.trim() || DEFAULT_STATE.company.cover
+      };
+      StorageService.saveState(AppState.data);
+      showToast(t('savedToast'));
+    }
+
+    // Конструктор дизайна
+    function ensureDraftDesign() {
+      if (!AppState.previewDesign) {
+        AppState.previewDesign = JSON.parse(JSON.stringify(AppState.data.design));
+      }
+    }
+
+    function selectDesignPreset(presetId) {
+      const preset = DESIGN_PRESETS.find(p => p.id === presetId);
+      if (!preset) return;
+      ensureDraftDesign();
+      AppState.previewDesign.preset = preset.id;
+      AppState.previewDesign.primaryColor = preset.primary;
+      AppState.previewDesign.secondaryColor = preset.secondary;
+      AppState.previewDesign.bgColor = preset.bgPage;
+      AppState.previewDesign.darkMode = preset.darkMode;
+      applyThemeVariables();
+      render();
+    }
+
+    function updateDraftDesign(key, value) {
+      ensureDraftDesign();
+      AppState.previewDesign[key] = value;
+      AppState.previewDesign.preset = 'custom';
+      applyThemeVariables();
+      render();
+    }
+
+    function openDesignPreview() {
+      ensureDraftDesign();
+      applyThemeVariables();
+      AppState.route = 'public';
+      render();
+    }
+
+    function savePreviewDesign() {
+      if (AppState.previewDesign) {
+        AppState.data.design = JSON.parse(JSON.stringify(AppState.previewDesign));
+        AppState.previewDesign = null;
+        StorageService.saveState(AppState.data);
+        applyThemeVariables();
+        render();
+        showToast(t('savedToast'));
+      }
+    }
+
+    function cancelPreviewDesign() {
+      AppState.previewDesign = null;
+      applyThemeVariables();
+      AppState.route = 'admin';
+      AppState.adminTab = 'design';
+      render();
+    }
+
+    function saveDesignSettings() {
+      if (AppState.previewDesign) {
+        AppState.data.design = JSON.parse(JSON.stringify(AppState.previewDesign));
+        AppState.previewDesign = null;
+      }
+      StorageService.saveState(AppState.data);
+      applyThemeVariables();
+      render();
+      showToast(t('savedToast'));
+    }
+
+    function saveSocials(e) {
+      e.preventDefault();
+      const waPhone = document.getElementById('soc-wa-phone').value.replace(/\D/g, '');
+      const waUrl = document.getElementById('soc-whatsapp').value.trim();
+      AppState.data.socials.instagram = document.getElementById('soc-instagram').value.trim();
+      AppState.data.socials.whatsappPhone = waPhone || '77000000000';
+      AppState.data.socials.whatsapp = waUrl || `https://wa.me/${AppState.data.socials.whatsappPhone}`;
+      AppState.data.socials.routeUrl = document.getElementById('soc-route').value.trim();
+      StorageService.saveState(AppState.data);
+      showToast(t('savedToast'));
+    }
+
+    function save2GisLink(e) {
+      e.preventDefault();
+      AppState.data.socials.dgisUrl = document.getElementById('dgis-url-input').value.trim();
+      StorageService.saveState(AppState.data);
+      showToast(t('savedToast'));
+    }
+
+    // Услуги CRUD
+    function addNewService(e) {
+      e.preventDefault();
+      const title = document.getElementById('new-srv-title').value.trim();
+      const price = Number(document.getElementById('new-srv-price').value) || 0;
+      const description = document.getElementById('new-srv-desc').value.trim();
+      const image = document.getElementById('new-srv-img').value.trim() || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80';
+
+      AppState.data.services.push({
+        id: 'srv-' + Date.now(),
+        title,
+        price,
+        description,
+        image
+      });
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Услуга добавлена в каталог!');
+    }
+
+    function deleteService(id) {
+      AppState.data.services = AppState.data.services.filter(s => s.id !== id);
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Услуга удалена', 'info');
+    }
+
+    // Акции CRUD
+    function addNewPromo(e) {
+      e.preventDefault();
+      const title = document.getElementById('new-prm-title').value.trim();
+      const validUntil = document.getElementById('new-prm-valid').value.trim();
+      const description = document.getElementById('new-prm-desc').value.trim();
+      const image = document.getElementById('new-prm-img').value.trim() || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80';
+
+      AppState.data.promos.push({
+        id: 'prm-' + Date.now(),
+        title,
+        validUntil,
+        description,
+        image
+      });
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Акция опубликована!');
+    }
+
+    function deletePromo(id) {
+      AppState.data.promos = AppState.data.promos.filter(p => p.id !== id);
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Акция удалена', 'info');
+    }
+
+    // Галерея CRUD
+    function addGalleryPhoto(e) {
+      e.preventDefault();
+      const url = document.getElementById('new-gal-url').value.trim();
+      const caption = document.getElementById('new-gal-caption').value.trim();
+      if (!url) return;
+
+      AppState.data.gallery.push({
+        id: 'gal-' + Date.now(),
+        url,
+        caption
+      });
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Фото добавлено в галерею!');
+    }
+
+    function deleteGalleryPhoto(id) {
+      AppState.data.gallery = AppState.data.gallery.filter(g => g.id !== id);
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Фото удалено', 'info');
+    }
+
+    // QR-код генерация, скачивание и печать
+    function generateQrCodeInstance(url) {
+      const container = document.getElementById('admin-qr-container');
+      if (!container) return;
+      container.innerHTML = '';
+      const target = (url && url.trim()) ? url.trim() : window.location.href.split('#')[0];
+
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(container, {
+          text: target,
+          width: 190,
+          height: 190,
+          colorDark: '#0f172a',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      } else {
+        // Fallback на Canvas, если CDN недоступен
+        const canvas = document.createElement('canvas');
+        canvas.width = 190;
+        canvas.height = 190;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 190, 190);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('QR: ' + target.slice(0, 22), 14, 95);
+        container.appendChild(canvas);
+      }
+    }
+
+    function updateQrCaption(field, value) {
+      AppState.data.qrSettings[field] = value;
+      StorageService.saveState(AppState.data);
+    }
+
+    function downloadQrPng() {
+      const container = document.getElementById('admin-qr-container');
+      if (!container) return;
+      const canvas = container.querySelector('canvas');
+      const img = container.querySelector('img');
+      let dataUrl = '';
+
+      if (canvas) {
+        dataUrl = canvas.toDataURL('image/png');
+      } else if (img && img.src) {
+        dataUrl = img.src;
+      }
+
+      if (!dataUrl) {
+        showToast('QR-код ещё формируется', 'error');
+        return;
+      }
+      const link = document.createElement('a');
+      link.download = 'BusinessCard-PRO-QR.png';
+      link.href = dataUrl;
+      link.click();
+      showToast('QR-код скачан в формате PNG!');
+    }
+
+    function printQrTableTent() {
+      const container = document.getElementById('admin-qr-container');
+      const printSheet = document.getElementById('qr-print-sheet');
+      if (!container || !printSheet) return;
+
+      const canvas = container.querySelector('canvas');
+      const img = container.querySelector('img');
+      const qrSrc = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+      const { company, qrSettings } = AppState.data;
+
+      printSheet.innerHTML = `
+        <div style="border: 3px solid #0f172a; border-radius: 28px; padding: 40px; max-width: 420px; text-align: center; font-family: Inter, sans-serif; background: #fff; color: #0f172a;">
+          <div style="font-size: 24px; font-weight: 800; margin-bottom: 8px;">${escapeHtml(company.name)}</div>
+          <div style="font-size: 13px; color: #475569; margin-bottom: 24px;">${escapeHtml(company.category)}</div>
+          <img src="${qrSrc}" style="width: 240px; height: 240px; margin: 0 auto 24px auto; display: block;" />
+          <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${escapeHtml(qrSettings.caption)}</div>
+          <div style="font-size: 13px; color: #64748b; margin-bottom: 24px;">${escapeHtml(qrSettings.subCaption)}</div>
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 11px; font-weight: 700; color: #2563eb; letter-spacing: 0.06em;">
+            BUSINESSCARD PRO • 2ГИС • INSTAGRAM • WHATSAPP
+          </div>
+        </div>
+      `;
+      printSheet.classList.remove('hidden');
+      window.print();
+      setTimeout(() => {
+        printSheet.classList.add('hidden');
+      }, 500);
+    }
+
+    function clearLeads() {
+      AppState.data.leads = [];
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Журнал заявок очищен', 'info');
+    }
+
+    function resetDemoStats() {
+      AppState.data.stats = {
+        pageViews: 1,
+        instagramClicks: 0,
+        dgisClicks: 0,
+        whatsappClicks: 0,
+        callClicks: 0,
+        routeClicks: 0
+      };
+      StorageService.saveState(AppState.data);
+      render();
+      showToast('Счётчики демо-статистики обнулены', 'info');
+    }
+
+    function exportConfigJson() {
+      const blob = new Blob([JSON.stringify(AppState.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'businesscard-pro-config.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Конфигурация экспортирована в JSON!');
+    }
+
+    function resetAllFactoryDefaults() {
+      AppState.data = StorageService.resetState();
+      AppState.previewDesign = null;
+      applyThemeVariables();
+      render();
+      showToast('Все данные восстановлены к демо-настройкам по умолчанию!');
+    }
+
+    /**
+     * ============================================================================
+     * МОДУЛЬ 11: ГЛАВНЫЙ ЦИКЛ РЕНДЕРА
+     * ============================================================================
+     */
+    function render() {
+      applyThemeVariables();
+      const appEl = document.getElementById('app');
+      if (!appEl) return;
+
+      if (AppState.route === 'login') {
+        appEl.innerHTML = renderLoginPage();
+      } else if (AppState.route === 'admin') {
+        if (!StorageService.isAuthenticated()) {
+          AppState.route = 'login';
+          appEl.innerHTML = renderLoginPage();
+        } else {
+          appEl.innerHTML = renderAdminDashboard();
+          if (AppState.adminTab === 'qr') {
+            setTimeout(() => generateQrCodeInstance(), 30);
+          }
+        }
+      } else {
+        appEl.innerHTML = renderPublicPage();
+      }
+    }
+
+    // Инициализация приложения при загрузке страницы
+    window.addEventListener('DOMContentLoaded', () => {
+      render();
+    });
+  </script>
+</body>
+</html>
